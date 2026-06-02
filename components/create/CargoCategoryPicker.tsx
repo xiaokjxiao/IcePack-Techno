@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 import type { CargoCategory, ProductCategory } from "@/lib/icepack/data";
+import { ProductIcon } from "@/components/ui/ProductIcon";
 
 interface CargoCategoryPickerProps {
   categories: ProductCategory[];
@@ -35,7 +36,7 @@ export function CargoCategoryPicker({
                   : "bg-[#f4f8fa] border border-[#e8eef3]",
               ].join(" ")}
             >
-              <Text className={isTablet ? "text-xl" : "text-lg"}>{p.icon}</Text>
+              <ProductIcon name={p.icon} size={isTablet ? 28 : 24} />
               <Text
                 className={[
                   isTablet ? "text-sm" : "text-xs",

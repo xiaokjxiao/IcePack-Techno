@@ -4,6 +4,7 @@ import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import 'react-native-reanimated';
 
 import { Colors } from '@/constants/theme';
@@ -26,6 +27,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="dark" />
+          <Toast />
         </ThemeProvider>
       </View>
     </SafeAreaProvider>

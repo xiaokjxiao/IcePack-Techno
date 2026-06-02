@@ -3,8 +3,6 @@
 import type { Database } from "@/lib/database.types";
 
 export type CargoCategory = Database["public"]["Enums"]["cargo_category_enum"];
-export type ContainerType = Database["public"]["Enums"]["container_type_enum"];
-
 export type StorageProfileKey = "ac" | "chilled" | "freezer" | "deep";
 
 export interface StorageProfile {
@@ -81,7 +79,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
     id: "meat",
     label: "Meat & Processed Meat",
-    icon: "🥩",
+    icon: "Beef",
     profile: "freezer",
     description:
       "Imported meat for further processing; local dressed chicken; processed meat products for retail",
@@ -89,7 +87,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
     id: "fish_aquaculture",
     label: "Fish & Aquaculture Products",
-    icon: "🐟",
+    icon: "Fish",
     profile: "chilled",
     description:
       "Tuna, sardines, shrimp, prawns, squid, mackerel, and other seafood",
@@ -97,14 +95,14 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
     id: "dairy",
     label: "Dairy Products",
-    icon: "🥛",
+    icon: "Milk",
     profile: "chilled",
     description: "Ice cream, cheese, yoghurt, milk",
   },
   {
     id: "fruits_vegetables",
     label: "Fruits & Vegetables",
-    icon: "🥬",
+    icon: "Apple",
     profile: "ac",
     description:
       "Bananas, pineapples, mangoes, papayas, potatoes, onions, garlic, carrots, apples, grapes, pears, oranges, kiwi, and frozen vegetables",
@@ -112,7 +110,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
     id: "other_food",
     label: "Other Food Items",
-    icon: "🍱",
+    icon: "UtensilsCrossed",
     profile: "chilled",
     description:
       "Frozen dough, cakes, bakery products, raw materials for quick service restaurants (QSRs)",
@@ -120,7 +118,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
     id: "pharma",
     label: "Pharmaceuticals",
-    icon: "💊",
+    icon: "Pill",
     profile: "deep",
     description:
       "Vaccines, biologics, temperature-sensitive drugs requiring ultra-low cold chain",
@@ -128,7 +126,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
     id: "electronics",
     label: "Electronics",
-    icon: "🖥️",
+    icon: "Monitor",
     profile: "ac",
     description:
       "Computers, components, and sensitive equipment requiring climate-controlled transport",
@@ -136,7 +134,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
     id: "cosmetics",
     label: "Cosmetics",
-    icon: "🧴",
+    icon: "SprayCan",
     profile: "chilled",
     description:
       "Skincare, makeup, and beauty products requiring cool chain stability",
@@ -144,21 +142,13 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
     id: "agricultural_products",
     label: "Agricultural Products",
-    icon: "🌾",
+    icon: "Sprout",
     profile: "chilled",
     description:
       "Fresh produce, flowers, seeds, and other agricultural commodities",
   },
 ];
 
-export const CONTAINER_TYPES: ContainerType[] = [
-  "reefer_container",
-  "insulated_container",
-  "blast_freezer_container",
-  "pharma_container",
-  "modular_cold_box",
-  "ice_chilled_carrier",
-];
 
 export type TripStatus = Database["public"]["Enums"]["trip_status_enum"];
 export type RiskLevel = "safe" | "warning" | "critical";
@@ -169,7 +159,6 @@ export interface Shipment {
   shipmentName: string;
   cargoCategory: CargoCategory;
   cargoKg: number;
-  containerType: ContainerType;
   durationHours: number;
   targetTempMinC: number | null;
   targetTempMaxC: number | null;
@@ -202,7 +191,6 @@ export interface Trip {
   productId: CargoCategory;
   cargoKg: number;
   durationHours: number;
-  container: ContainerType;
   recommendedIceKg: number;
   iceRemainingKg: number;
   meltRateKgPerHr: number;

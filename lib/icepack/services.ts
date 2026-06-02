@@ -197,7 +197,6 @@ function mapTripWithShipment(row: TripWithShipment): Trip {
     productId: row.shipment.cargo_category,
     cargoKg: row.shipment.cargo_kg,
     durationHours: row.shipment.duration_hours,
-    container: row.shipment.container_type,
     recommendedIceKg: row.recommended_ice_kg,
     iceRemainingKg: row.ice_remaining_kg,
     meltRateKgPerHr: row.melt_rate_kg_per_hr,

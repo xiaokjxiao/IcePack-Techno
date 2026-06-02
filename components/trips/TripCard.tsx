@@ -6,6 +6,7 @@ import {
   getProduct,
   liveStateFor,
 } from "@/lib/icepack/data";
+import { ProductIcon } from "@/components/ui/ProductIcon";
 import { Link } from "expo-router";
 import { Check } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
@@ -147,9 +148,7 @@ export function TripCard({
           <View className="flex-row justify-between items-start mb-3">
             <View className="shrink">
               <View className="flex-row items-center gap-2">
-                <Text className="text-base" style={{ fontSize: fsBase }}>
-                  {product.icon}
-                </Text>
+                <ProductIcon name={product.icon} size={fsBase} />
                 <Text
                   className="text-sea-950 font-semibold text-base shrink"
                   numberOfLines={1}
