@@ -7,11 +7,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const insets = useSafeAreaInsets();
+  const { isTablet, isSmallDevice } = useScreenDimensions();
+  const dims = useResponsiveSizes();
 
   const tabRoutes = state.routes.filter((r) => r.name !== "create");
   const isCreateActive = state.routes[state.index]?.name === "create";
@@ -27,9 +30,21 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
     }
   };
 
+  const fabGap = isTablet ? 48 : isSmallDevice ? 32 : 40;
+
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <View style={[styles.tabBar, { borderTopColor: colors.border }]}>
+      <View
+        style={[
+          styles.tabBar,
+          {
+            borderTopColor: colors.border,
+            height: dims.barHeight,
+            paddingBottom: dims.paddingBottom,
+            paddingTop: dims.paddingTop,
+          },
+        ]}
+      >
         {tabRoutes.map((route, index) => {
           const { options } = descriptors[route.key];
           const routeIndex = state.routes.findIndex((r) => r.key === route.key);
@@ -47,8 +62,8 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
               }}
               style={[
                 styles.tabItem,
-                index === 1 && styles.tabBeforeFAB,
-                index === 2 && styles.tabAfterFAB,
+                index === 1 && { marginRight: fabGap },
+                index === 2 && { marginLeft: fabGap },
               ]}
             >
               {options.tabBarIcon?.({ color })}
@@ -63,7 +78,12 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
           <PlatformPressable
             style={[
               styles.fab,
-              { backgroundColor: colors.tint },
+              {
+                backgroundColor: colors.tint,
+                width: dims.fab,
+                height: dims.fab,
+                borderRadius: dims.fab / 2,
+              },
               isCreateActive && styles.fabActive,
             ]}
             onPressIn={() => {
@@ -72,7 +92,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
               }
             }}
           >
-            <IconSymbol name="plus" size={24} color="#fff" />
+            <IconSymbol name="plus" size={isTablet ? 28 : 24} color="#fff" />
           </PlatformPressable>
         </Link>
       </View>
@@ -80,8 +100,15 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   );
 }
 
-const FAB_SIZE = 56;
-const TAB_BAR_HEIGHT = 80;
+function useResponsiveSizes() {
+  const { isTablet, isSmallDevice } = useScreenDimensions();
+  return {
+    fab: isTablet ? 64 : isSmallDevice ? 48 : 56,
+    barHeight: isTablet ? 88 : isSmallDevice ? 72 : 80,
+    paddingBottom: isTablet ? 16 : 12,
+    paddingTop: isTablet ? 10 : 8,
+  };
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -97,9 +124,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     backgroundColor: "#fff",
     borderTopWidth: StyleSheet.hairlineWidth,
-    height: TAB_BAR_HEIGHT,
-    paddingBottom: 12,
-    paddingTop: 8,
     paddingHorizontal: 16,
   },
   tabItem: {
@@ -108,12 +132,6 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
-  },
-  tabBeforeFAB: {
-    marginRight: 40,
-  },
-  tabAfterFAB: {
-    marginLeft: 40,
   },
   tabLabel: {
     fontSize: 10,
@@ -125,9 +143,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 28,
     alignSelf: "center",
-    width: FAB_SIZE,
-    height: FAB_SIZE,
-    borderRadius: FAB_SIZE / 2,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 4,

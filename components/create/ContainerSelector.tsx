@@ -8,6 +8,7 @@ import {
   SafeAreaView,
 } from "react-native";
 import { ChevronDown, Check } from "lucide-react-native";
+import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 
 interface ContainerSelectorProps {
   containers: string[];
@@ -21,6 +22,7 @@ export function ContainerSelector({
   onSelect,
 }: ContainerSelectorProps) {
   const [open, setOpen] = useState(false);
+  const { isTablet, isPhone } = useScreenDimensions();
 
   const handleSelect = (container: string) => {
     onSelect(container);
@@ -32,9 +34,14 @@ export function ContainerSelector({
       <TouchableOpacity
         onPress={() => setOpen(true)}
         activeOpacity={0.75}
-        className="flex-row items-center justify-between bg-white border border-border rounded-xl px-4 py-3.5"
+        className={
+          "flex-row items-center justify-between bg-white border border-border rounded-xl " +
+          (isTablet ? "px-5 py-4" : "px-4 py-3.5")
+        }
       >
-        <Text className="text-sm text-sea-900 flex-1">{selected}</Text>
+        <Text className={"text-sea-900 flex-1 " + (isTablet ? "text-base" : "text-sm")}>
+          {selected}
+        </Text>
         <ChevronDown size={16} className="text-muted-foreground" />
       </TouchableOpacity>
 
@@ -52,11 +59,16 @@ export function ContainerSelector({
         />
 
         {/* Bottom sheet */}
-        <SafeAreaView className="bg-white rounded-t-3xl px-6 pb-8 max-h-[60%]">
+        <SafeAreaView
+          className={
+            "bg-white rounded-t-3xl pb-8 " +
+            (isTablet ? "px-8 max-h-[50%]" : "px-6 max-h-[60%]")
+          }
+        >
           {/* Handle */}
           <View className="w-9 h-1 bg-border rounded-full self-center mt-3 mb-4" />
 
-          <Text className="text-base font-bold text-sea-950 mb-3">
+          <Text className={"font-bold text-sea-950 mb-3 " + (isTablet ? "text-lg" : "text-base")}>
             Container Type
           </Text>
 
@@ -69,11 +81,11 @@ export function ContainerSelector({
                 <TouchableOpacity
                   onPress={() => handleSelect(item)}
                   activeOpacity={0.7}
-                  className="flex-row items-center justify-between py-3.5"
+                  className={"flex-row items-center justify-between " + (isTablet ? "py-4" : "py-3.5")}
                 >
                   <Text
                     className={[
-                      "text-sm",
+                      isTablet ? "text-base" : "text-sm",
                       isSelected
                         ? "text-sea-600 font-semibold"
                         : "text-sea-900",

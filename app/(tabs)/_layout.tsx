@@ -1,35 +1,61 @@
 import { Tabs } from "expo-router";
-import React from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import "@/global.css";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import {
+  useResponsiveFontSize,
+  useResponsiveSpacing,
+} from "@/hooks/use-responsive-size";
+import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
+
+function useTabBarStyle() {
+  const { isTablet, isSmallDevice, width } = useScreenDimensions();
+  const labelFontSize = useResponsiveFontSize("xs");
+  const paddingBottom = useResponsiveSpacing("sm");
+  const paddingTop = useResponsiveSpacing("sm");
+
+  // Responsive height calculation
+  const baseHeight = 80;
+  const tabletHeight = 88;
+  const smallHeight = 72;
+  const tabBarHeight = isTablet
+    ? tabletHeight
+    : isSmallDevice
+      ? smallHeight
+      : baseHeight;
+
+  return {
+    tabBarStyle: {
+      backgroundColor: "#fff",
+      borderTopColor: Colors.light.border,
+      height: tabBarHeight + paddingBottom + paddingTop,
+      paddingBottom: Math.round(paddingBottom),
+      paddingTop: Math.round(paddingTop),
+    },
+    iconSize: isTablet ? 24 : 20,
+    tabBarLabelStyle: {
+      fontSize: labelFontSize,
+      fontWeight: "600" as const,
+      textTransform: "uppercase" as const,
+      letterSpacing: 1,
+    },
+  };
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { tabBarStyle, iconSize, tabBarLabelStyle } = useTabBarStyle();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        tabBarInactiveTintColor: Colors[colorScheme ?? "light"].tabIconDefault,
+        tabBarActiveTintColor: Colors.light.tint,
+        tabBarInactiveTintColor: Colors.light.tabIconDefault,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarStyle: {
-          backgroundColor: "#fff",
-          borderTopColor: Colors[colorScheme ?? "light"].border,
-          height: 80,
-          paddingBottom: 12,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "600",
-          textTransform: "uppercase",
-          letterSpacing: 1,
-        },
+        tabBarStyle,
+        tabBarLabelStyle,
       }}
     >
       <Tabs.Screen
@@ -37,7 +63,7 @@ export default function TabLayout() {
         options={{
           title: "Trips",
           tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol size={20} name="map.fill" color={color} />
+            <IconSymbol size={iconSize} name="map.fill" color={color} />
           ),
         }}
       />
@@ -46,7 +72,11 @@ export default function TabLayout() {
         options={{
           title: "Monitor",
           tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol size={20} name="gauge.with.dots.needle.33percent" color={color} />
+            <IconSymbol
+              size={iconSize}
+              name="gauge.with.dots.needle.33percent"
+              color={color}
+            />
           ),
         }}
       />
@@ -55,7 +85,7 @@ export default function TabLayout() {
         options={{
           title: "Create",
           tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol size={20} name="plus" color={color} />
+            <IconSymbol size={iconSize} name="plus" color={color} />
           ),
         }}
       />
@@ -64,7 +94,7 @@ export default function TabLayout() {
         options={{
           title: "History",
           tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol size={20} name="clock.fill" color={color} />
+            <IconSymbol size={iconSize} name="clock.fill" color={color} />
           ),
         }}
       />
@@ -73,7 +103,7 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol size={20} name="gearshape.fill" color={color} />
+            <IconSymbol size={iconSize} name="gearshape.fill" color={color} />
           ),
         }}
       />

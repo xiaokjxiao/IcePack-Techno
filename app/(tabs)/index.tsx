@@ -1,66 +1,147 @@
-import { Image } from "expo-image";
-import { useRouter } from "expo-router";
-import { Platform, Pressable } from "react-native";
+import { StatCard } from "@/components/trips/StatCard";
+import {
+  useResponsiveFontSize,
+  useResponsiveSpacing,
+} from "@/hooks/use-responsive-size";
+import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
+import { LinearGradient } from "expo-linear-gradient";
+import { Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { HelloWave } from "@/components/hello-wave";
-import ParallaxScrollView from "@/components/parallax-scroll-view";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+export default function Header() {
+  const insets = useSafeAreaInsets();
+  const { isTablet, isLandscape } = useScreenDimensions();
+  const titleFontSize = useResponsiveFontSize("3xl");
+  const subtitleFontSize = useResponsiveFontSize("xs");
+  const horizontalPadding = useResponsiveSpacing("lg");
+  const verticalPadding = useResponsiveSpacing("lg");
+  const gapSize = useResponsiveSpacing("md");
 
-export default function HomeScreen() {
-  const router = useRouter();
+  const stats = {
+    active: 3,
+    planned: 2,
+    completed: 8,
+    critical: 1,
+  };
+
+  const statCards = [
+    { label: "Active", value: String(stats.active).padStart(2, "0") },
+    { label: "Completed", value: String(stats.completed).padStart(2, "0") },
+    { label: "Planned", value: String(stats.planned).padStart(2, "0") },
+    {
+      label: "Critical",
+      value: String(stats.critical).padStart(2, "0"),
+      accent: true,
+    },
+  ];
+
+  const isFourCol = isLandscape && !isTablet;
+  const avatarSize = isTablet ? 48 : 40;
+  const innerAvatarSize = isTablet ? 16 : 12;
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
-      headerImage={
-        <Image
-          source={require("@/assets/images/partial-react-logo.png")}
-          className="absolute bottom-0 left-0 h-44 w-72"
-        />
-      }
+    <LinearGradient
+      colors={["#173E61", "#246EA2"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={{
+        paddingLeft: horizontalPadding,
+        paddingRight: horizontalPadding,
+        paddingBottom: verticalPadding,
+        paddingTop: insets.top + 16,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+      }}
     >
-      <ThemedView className="flex flex-row items-center gap-2">
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView className="gap-2 mb-2">
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit{" "}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText>{" "}
-          to see changes. Press{" "}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: "cmd + d",
-              android: "cmd + m",
-              web: "F12",
-            })}
-          </ThemedText>{" "}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView className="gap-2 mb-2">
-        <Pressable onPress={() => router.push("/create")}>
-          <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        </Pressable>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView className="gap-2 mb-2">
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">
-            npm run reset-project
-          </ThemedText>{" "}
-          to get a fresh <ThemedText type="defaultSemiBold">app</ThemedText>{" "}
-          directory. This will move the current{" "}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{" "}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: verticalPadding,
+        }}
+      >
+        <View style={{ gap: 4 }}>
+          <Text
+            style={{
+              fontSize: subtitleFontSize,
+              fontWeight: "500",
+              color: "rgba(255, 255, 255, 0.5)",
+              textTransform: "uppercase",
+              letterSpacing: 1.2,
+            }}
+          >
+            Welcome aboard
+          </Text>
+          <Text
+            style={{
+              fontSize: titleFontSize,
+              fontWeight: "700",
+              color: "white",
+            }}
+          >
+            Captain
+          </Text>
+        </View>
+        <View
+          style={{
+            width: avatarSize,
+            height: avatarSize,
+            borderRadius: avatarSize / 2,
+            backgroundColor: "rgba(255, 255, 255, 0.1)",
+            borderWidth: 1,
+            borderColor: "rgba(255, 255, 255, 0.2)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              width: innerAvatarSize,
+              height: innerAvatarSize,
+              borderRadius: innerAvatarSize / 2,
+              backgroundColor: "#06b6d4",
+            }}
+          />
+        </View>
+      </View>
+
+      {isFourCol ? (
+        <View style={{ flexDirection: "row", gap: gapSize }}>
+          {statCards.map((card) => (
+            <View key={card.label} style={{ flex: 1 }}>
+              <StatCard
+                label={card.label}
+                value={card.value}
+                accent={card.accent}
+              />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={{ flexDirection: "row", gap: gapSize }}>
+          <View style={{ flex: 1, gap: gapSize }}>
+            {statCards.slice(0, 2).map((card) => (
+              <StatCard
+                key={card.label}
+                label={card.label}
+                value={card.value}
+                accent={card.accent}
+              />
+            ))}
+          </View>
+          <View style={{ flex: 1, gap: gapSize }}>
+            {statCards.slice(2).map((card) => (
+              <StatCard
+                key={card.label}
+                label={card.label}
+                value={card.value}
+                accent={card.accent}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+    </LinearGradient>
   );
 }

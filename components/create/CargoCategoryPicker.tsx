@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 
 interface ProductCategory {
   id: string;
@@ -21,6 +22,7 @@ export function CargoCategoryPicker({
   onSelect,
 }: CargoCategoryPickerProps) {
   const selected = categories.find((p) => p.id === selectedId);
+  const { isTablet } = useScreenDimensions();
 
   return (
     <View>
@@ -34,17 +36,17 @@ export function CargoCategoryPicker({
               activeOpacity={0.75}
               className={[
                 "flex-col items-center gap-1 px-2 py-3 rounded-xl",
-                // each chip takes ~31% width — use basis with flex-wrap
-                "basis-[31%]",
+                isTablet ? "basis-[23%]" : "basis-[31%]",
                 active
                   ? "bg-sea-600 ring-2 ring-sea-600 shadow-card"
                   : "bg-white ring-1 ring-border",
               ].join(" ")}
             >
-              <Text className="text-lg">{p.icon}</Text>
+              <Text className={isTablet ? "text-xl" : "text-lg"}>{p.icon}</Text>
               <Text
                 className={[
-                  "text-xs font-medium text-center leading-tight",
+                  isTablet ? "text-sm" : "text-xs",
+                  "font-medium text-center leading-tight",
                   active ? "text-white" : "text-sea-900",
                 ].join(" ")}
                 numberOfLines={2}

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Thermometer } from "lucide-react-native";
+import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 
 interface StorageProfile {
   label: string;
@@ -14,11 +15,6 @@ interface TempRangeCardProps {
   profile: StorageProfile;
 }
 
-/**
- * Returns NativeWind-compatible class strings based on temperature range.
- * Using explicit strings (not dynamic construction) so NativeWind's static
- * analysis can include them in the generated stylesheet.
- */
 function getTempClasses(minTemp: number): {
   card: string;
   iconWrap: string;
@@ -27,7 +23,6 @@ function getTempClasses(minTemp: number): {
   badge: string;
 } {
   if (minTemp <= -18) {
-    // Frozen — blue
     return {
       card: "bg-blue-50 border-blue-200",
       iconWrap: "bg-blue-100",
@@ -37,7 +32,6 @@ function getTempClasses(minTemp: number): {
     };
   }
   if (minTemp <= 0) {
-    // Chilled — cyan
     return {
       card: "bg-cyan-50 border-cyan-200",
       iconWrap: "bg-cyan-100",
@@ -46,7 +40,6 @@ function getTempClasses(minTemp: number): {
       badge: "text-cyan-600",
     };
   }
-  // Cool — teal
   return {
     card: "bg-teal-50 border-teal-200",
     iconWrap: "bg-teal-100",
@@ -65,10 +58,11 @@ function MetaStat({
   value: string;
   valueClassName: string;
 }) {
+  const { isTablet } = useScreenDimensions();
   return (
     <View className="items-center gap-0.5">
-      <Text className={`text-base font-bold ${valueClassName}`}>{value}</Text>
-      <Text className="text-[10px] text-muted-foreground uppercase tracking-wide">
+      <Text className={"font-bold " + valueClassName}>{value}</Text>
+      <Text className={"text-muted-foreground uppercase tracking-wide " + (isTablet ? "text-xs" : "text-[10px]")}>
         {label}
       </Text>
     </View>
@@ -77,25 +71,26 @@ function MetaStat({
 
 export function TempRangeCard({ profile }: TempRangeCardProps) {
   const cls = getTempClasses(profile.minTemp);
+  const { isTablet } = useScreenDimensions();
 
   return (
-    <View className={`rounded-2xl p-4 border ${cls.card}`}>
+    <View className={`rounded-2xl border ${isTablet ? "p-5" : "p-4"} ${cls.card}`}>
       {/* Top row */}
       <View className="flex-row items-center gap-3">
-        <View className={`w-9 h-9 rounded-xl items-center justify-center ${cls.iconWrap}`}>
-          <Thermometer size={18} color={cls.iconColor} />
+        <View className={(isTablet ? "w-11 h-11" : "w-9 h-9") + " rounded-xl items-center justify-center " + cls.iconWrap}>
+          <Thermometer size={isTablet ? 22 : 18} color={cls.iconColor} />
         </View>
 
         <View className="flex-1">
-          <Text className="text-sm font-bold text-sea-950">{profile.label}</Text>
+          <Text className={"font-bold text-sea-950 " + (isTablet ? "text-base" : "text-sm")}>{profile.label}</Text>
           {profile.description && (
-            <Text className="text-xs text-muted-foreground mt-0.5">
+            <Text className={(isTablet ? "text-sm" : "text-xs") + " text-muted-foreground mt-0.5"}>
               {profile.description}
             </Text>
           )}
         </View>
 
-        <Text className={`text-xs font-bold ${cls.badge}`}>
+        <Text className={"font-bold " + (isTablet ? "text-sm" : "text-xs") + " " + cls.badge}>
           {profile.minTemp}° - {profile.maxTemp}°C
         </Text>
       </View>
