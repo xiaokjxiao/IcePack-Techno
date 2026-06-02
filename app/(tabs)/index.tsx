@@ -1,12 +1,20 @@
+import { useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { StatCard } from "@/components/trips/StatCard";
+import { TripCard } from "@/components/trips/TripCard";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
 } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
-import { LinearGradient } from "expo-linear-gradient";
-import { Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { Trip } from "@/lib/icepack/data";
+import {
+  getTripsWithShipments,
+  getTripsWithShipmentsByStatus,
+} from "@/lib/icepack/services";
 
 export default function Header() {
   const insets = useSafeAreaInsets();
@@ -16,12 +24,40 @@ export default function Header() {
   const horizontalPadding = useResponsiveSpacing("lg");
   const verticalPadding = useResponsiveSpacing("lg");
   const gapSize = useResponsiveSpacing("md");
+  const baseFontSize = useResponsiveFontSize("base");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [allTrips, setAllTrips] = useState<Trip[]>([]);
+  const [activeTrips, setActiveTrips] = useState<Trip[]>([]);
+  const [plannedTrips, setPlannedTrips] = useState<Trip[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [all, active, planned] = await Promise.all([
+          getTripsWithShipments(),
+          getTripsWithShipmentsByStatus("active"),
+          getTripsWithShipmentsByStatus("planned"),
+        ]);
+        setAllTrips(all);
+        setActiveTrips(active);
+        setPlannedTrips(planned);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   const stats = {
-    active: 3,
-    planned: 2,
-    completed: 8,
-    critical: 1,
+    active: allTrips.filter((t) => t.status === "active").length,
+    planned: allTrips.filter((t) => t.status === "planned").length,
+    completed: allTrips.filter((t) => t.status === "completed").length,
+    critical: allTrips.filter(
+      (t) => t.status === "active" && t.iceRemainingKg <= 0,
+    ).length,
   };
 
   const statCards = [
@@ -40,108 +76,219 @@ export default function Header() {
   const innerAvatarSize = isTablet ? 16 : 12;
 
   return (
-    <LinearGradient
-      colors={["#173E61", "#246EA2"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={{
-        paddingLeft: horizontalPadding,
-        paddingRight: horizontalPadding,
-        paddingBottom: verticalPadding,
-        paddingTop: insets.top + 16,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-      }}
+    <ScrollView
+      className="flex-1 bg-white"
+      contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
     >
-      <View
+      <LinearGradient
+        colors={["#173E61", "#246EA2"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
         style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: verticalPadding,
+          paddingLeft: horizontalPadding,
+          paddingRight: horizontalPadding,
+          paddingBottom: verticalPadding,
+          paddingTop: insets.top + 16,
+          borderBottomLeftRadius: 24,
+          borderBottomRightRadius: 24,
         }}
       >
-        <View style={{ gap: 4 }}>
-          <Text
-            style={{
-              fontSize: subtitleFontSize,
-              fontWeight: "500",
-              color: "rgba(255, 255, 255, 0.5)",
-              textTransform: "uppercase",
-              letterSpacing: 1.2,
-            }}
-          >
-            Welcome aboard
-          </Text>
-          <Text
-            style={{
-              fontSize: titleFontSize,
-              fontWeight: "700",
-              color: "white",
-            }}
-          >
-            Captain
-          </Text>
-        </View>
         <View
           style={{
-            width: avatarSize,
-            height: avatarSize,
-            borderRadius: avatarSize / 2,
-            backgroundColor: "rgba(255, 255, 255, 0.1)",
-            borderWidth: 1,
-            borderColor: "rgba(255, 255, 255, 0.2)",
+            flexDirection: "row",
+            justifyContent: "space-between",
             alignItems: "center",
-            justifyContent: "center",
+            marginBottom: verticalPadding,
           }}
         >
+          <View style={{ gap: 4 }}>
+            <Text
+              style={{
+                fontSize: subtitleFontSize,
+                fontWeight: "500",
+                color: "rgba(255, 255, 255, 0.5)",
+                textTransform: "uppercase",
+                letterSpacing: 1.2,
+              }}
+            >
+              Welcome aboard
+            </Text>
+            <Text
+              style={{
+                fontSize: titleFontSize,
+                fontWeight: "700",
+                color: "white",
+              }}
+            >
+              Captain
+            </Text>
+          </View>
           <View
             style={{
-              width: innerAvatarSize,
-              height: innerAvatarSize,
-              borderRadius: innerAvatarSize / 2,
-              backgroundColor: "#06b6d4",
+              width: avatarSize,
+              height: avatarSize,
+              borderRadius: avatarSize / 2,
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              borderWidth: 1,
+              borderColor: "rgba(255, 255, 255, 0.2)",
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
+          >
+            <View
+              style={{
+                width: innerAvatarSize,
+                height: innerAvatarSize,
+                borderRadius: innerAvatarSize / 2,
+                backgroundColor: "#06b6d4",
+              }}
+            />
+          </View>
         </View>
-      </View>
 
-      {isFourCol ? (
-        <View style={{ flexDirection: "row", gap: gapSize }}>
-          {statCards.map((card) => (
-            <View key={card.label} style={{ flex: 1 }}>
-              <StatCard
-                label={card.label}
-                value={card.value}
-                accent={card.accent}
-              />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <View style={{ flexDirection: "row", gap: gapSize }}>
-          <View style={{ flex: 1, gap: gapSize }}>
-            {statCards.slice(0, 2).map((card) => (
-              <StatCard
-                key={card.label}
-                label={card.label}
-                value={card.value}
-                accent={card.accent}
-              />
+        {isFourCol ? (
+          <View style={{ flexDirection: "row", gap: gapSize }}>
+            {statCards.map((card) => (
+              <View key={card.label} style={{ flex: 1 }}>
+                <StatCard
+                  label={card.label}
+                  value={card.value}
+                  accent={card.accent}
+                />
+              </View>
             ))}
           </View>
-          <View style={{ flex: 1, gap: gapSize }}>
-            {statCards.slice(2).map((card) => (
-              <StatCard
-                key={card.label}
-                label={card.label}
-                value={card.value}
-                accent={card.accent}
-              />
-            ))}
+        ) : (
+          <View style={{ flexDirection: "row", gap: gapSize }}>
+            <View style={{ flex: 1, gap: gapSize }}>
+              {statCards.slice(0, 2).map((card) => (
+                <StatCard
+                  key={card.label}
+                  label={card.label}
+                  value={card.value}
+                  accent={card.accent}
+                />
+              ))}
+            </View>
+            <View style={{ flex: 1, gap: gapSize }}>
+              {statCards.slice(2).map((card) => (
+                <StatCard
+                  key={card.label}
+                  label={card.label}
+                  value={card.value}
+                  accent={card.accent}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+      </LinearGradient>
+
+      {loading ? (
+        <ActivityIndicator
+          size="large"
+          color="#1a8ad4"
+          style={{ marginTop: 32 }}
+        />
+      ) : error ? (
+        <Text
+          style={{
+            fontSize: subtitleFontSize,
+            color: "#ef4444",
+            marginTop: 24,
+            paddingHorizontal: horizontalPadding,
+          }}
+        >
+          {error}
+        </Text>
+      ) : (
+        <View style={{ paddingHorizontal: horizontalPadding }}>
+          <TouchableOpacity
+            onPress={() => router.push("/shipments")}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: "#f4f8fa",
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: "#e8eef3",
+              paddingVertical: 14,
+              alignItems: "center",
+              marginTop: verticalPadding,
+              marginBottom: 12,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: baseFontSize,
+                fontWeight: "700",
+                color: "#1a8ad4",
+              }}
+            >
+              View All Shipments
+            </Text>
+          </TouchableOpacity>
+
+          <View style={{ marginTop: 0 }}>
+            <Text
+              style={{
+                fontSize: gapSize,
+                fontWeight: "500",
+                color: "rgba(0,0,0,0.65)",
+                marginBottom: 8,
+              }}
+            >
+              Active Shipments
+            </Text>
+            {activeTrips.length === 0 ? (
+              <Text
+                style={{
+                  fontSize: subtitleFontSize,
+                  color: "rgba(0,0,0,0.4)",
+                  marginBottom: 16,
+                }}
+              >
+                No active shipments
+              </Text>
+            ) : (
+              <View style={{ gap: 12, marginBottom: 24 }}>
+                {activeTrips.map((trip) => (
+                  <TripCard key={trip.id} trip={trip} />
+                ))}
+              </View>
+            )}
+          </View>
+
+          <View>
+            <Text
+              style={{
+                fontSize: gapSize,
+                fontWeight: "500",
+                color: "rgba(0,0,0,0.65)",
+                marginBottom: 8,
+              }}
+            >
+              Planned Shipments
+            </Text>
+            {plannedTrips.length === 0 ? (
+              <Text
+                style={{
+                  fontSize: subtitleFontSize,
+                  color: "rgba(0,0,0,0.4)",
+                  marginBottom: 16,
+                }}
+              >
+                No planned shipments
+              </Text>
+            ) : (
+              <View style={{ gap: 12, marginBottom: 24 }}>
+                {plannedTrips.map((trip) => (
+                  <TripCard key={trip.id} trip={trip} />
+                ))}
+              </View>
+            )}
           </View>
         </View>
       )}
-    </LinearGradient>
+    </ScrollView>
   );
 }

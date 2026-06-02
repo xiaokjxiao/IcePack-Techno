@@ -9,11 +9,12 @@ import {
 } from "react-native";
 import { ChevronDown, Check } from "lucide-react-native";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
+import type { ContainerType } from "@/lib/icepack/data";
 
 interface ContainerSelectorProps {
-  containers: string[];
+  containers: ContainerType[];
   selected: string;
-  onSelect: (container: string) => void;
+  onSelect: (container: ContainerType) => void;
 }
 
 export function ContainerSelector({
@@ -22,9 +23,9 @@ export function ContainerSelector({
   onSelect,
 }: ContainerSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { isTablet, isPhone } = useScreenDimensions();
+  const { isTablet } = useScreenDimensions();
 
-  const handleSelect = (container: string) => {
+  const handleSelect = (container: ContainerType) => {
     onSelect(container);
     setOpen(false);
   };

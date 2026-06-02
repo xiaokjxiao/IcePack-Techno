@@ -21,13 +21,19 @@ function Row({
 }) {
   const { isTablet } = useScreenDimensions();
   return (
-    <View className={"flex-row justify-between items-center border-b border-border/60 last:border-b-0 " + (isTablet ? "py-3" : "py-2")}>
-      <Text className={(isTablet ? "text-base" : "text-sm") + " text-sea-900"}>{label}</Text>
+    <View
+      className={"flex-row justify-between items-center " + (isTablet ? "py-3" : "py-2")}
+      style={{ borderBottomWidth: 1, borderBottomColor: "rgba(232, 238, 243, 0.6)" }}
+    >
       <Text
-        className={[
-          "font-semibold",
-          accent ? "text-ice-teal" : strong ? (isTablet ? "text-lg" : "text-base") + " text-sea-950" : "text-sea-950",
-        ].join(" ")}
+        className={isTablet ? "text-base" : "text-sm"}
+        style={{ color: "#0b2540" }}
+      >
+        {label}
+      </Text>
+      <Text
+        className={"font-semibold " + (strong ? (isTablet ? "text-lg" : "text-base") : "")}
+        style={{ color: accent ? "#14b8a6" : "#0b2540" }}
       >
         {value}
       </Text>
@@ -43,12 +49,21 @@ export function CalculationResult({
   const { isTablet } = useScreenDimensions();
 
   return (
-    <View className={"bg-white rounded-2xl border border-border shadow-card " + (isTablet ? "p-6" : "p-5")}>
+    <View
+      className={"rounded-2xl " + (isTablet ? "p-6" : "p-5")}
+      style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#e8eef3", shadowColor: "#0b2540", shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 }}
+    >
       <View className="flex-row justify-between items-center mb-3">
-        <Text className={(isTablet ? "text-sm" : "text-xs") + " font-semibold text-muted-foreground uppercase tracking-wider"}>
+        <Text
+          className={(isTablet ? "text-sm" : "text-xs") + " font-semibold uppercase tracking-wider"}
+          style={{ color: "#587a94" }}
+        >
           Calculation Output
         </Text>
-        <Text className={(isTablet ? "text-xs" : "text-[10px]") + " font-semibold text-sea-600 uppercase tracking-wider"}>
+        <Text
+          className={(isTablet ? "text-xs" : "text-[10px]") + " font-semibold uppercase tracking-wider"}
+          style={{ color: "#1a8ad4" }}
+        >
           Auto
         </Text>
       </View>

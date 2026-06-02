@@ -1,19 +1,12 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
-
-interface ProductCategory {
-  id: string;
-  icon: string;
-  label: string;
-  description: string;
-  profile: string;
-}
+import type { CargoCategory, ProductCategory } from "@/lib/icepack/data";
 
 interface CargoCategoryPickerProps {
   categories: ProductCategory[];
   selectedId: string;
-  onSelect: (id: string) => void;
+  onSelect: (id: CargoCategory) => void;
 }
 
 export function CargoCategoryPicker({
@@ -38,8 +31,8 @@ export function CargoCategoryPicker({
                 "flex-col items-center gap-1 px-2 py-3 rounded-xl",
                 isTablet ? "basis-[23%]" : "basis-[31%]",
                 active
-                  ? "bg-sea-600 ring-2 ring-sea-600 shadow-card"
-                  : "bg-white ring-1 ring-border",
+                  ? "bg-[#e3f2fd] text-[#1e3a8a]"
+                  : "bg-[#f4f8fa] border border-[#e8eef3]",
               ].join(" ")}
             >
               <Text className={isTablet ? "text-xl" : "text-lg"}>{p.icon}</Text>
@@ -47,7 +40,7 @@ export function CargoCategoryPicker({
                 className={[
                   isTablet ? "text-sm" : "text-xs",
                   "font-medium text-center leading-tight",
-                  active ? "text-white" : "text-sea-900",
+                  active ? "text-[#1e3a8a]" : "text-[#0b2540]",
                 ].join(" ")}
                 numberOfLines={2}
               >

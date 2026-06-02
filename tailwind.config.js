@@ -1,7 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   // NOTE: Update this to include the paths to all files that contain Nativewind classes.
-  content: ["./App.tsx", "./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
+  content: [
+    "./App.tsx",
+    "./app/**/*.{js,jsx,ts,tsx}",
+    "./components/**/*.{js,jsx,ts,tsx}",
+  ],
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
@@ -54,7 +58,29 @@ module.exports = {
         "resp-xl": "clamp(1.5rem, 1rem + 3vw, 3rem)",
         "resp-2xl": "clamp(2.25rem, 1.5rem + 4vw, 4rem)",
       },
+      colors: {
+        // Map semantic tokens to CSS variables defined in global.css
+        sea: {
+          50: "var(--color-sea-50)",
+          100: "var(--color-sea-100)",
+          200: "var(--color-sea-200)",
+          300: "var(--color-sea-300)",
+          500: "var(--color-sea-500)",
+          600: "var(--color-sea-600)",
+          700: "var(--color-sea-700)",
+          900: "var(--color-sea-900)",
+        },
+        "ice-teal": "var(--color-ice-teal)",
+        "ice-cyan": "var(--color-ice-cyan)",
+        safe: "var(--color-safe)",
+        warning: "var(--color-warning)",
+        critical: "var(--color-critical)",
+        muted: "var(--color-muted)",
+        "muted-foreground": "var(--color-muted-foreground)",
+        card: "var(--color-card)",
+        border: "var(--color-border)",
+      },
     },
   },
   plugins: [],
-}
+};

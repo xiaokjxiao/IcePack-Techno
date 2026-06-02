@@ -11,7 +11,7 @@ import {
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 
 function useTabBarStyle() {
-  const { isTablet, isSmallDevice, width } = useScreenDimensions();
+  const { isTablet, isSmallDevice} = useScreenDimensions();
   const labelFontSize = useResponsiveFontSize("xs");
   const paddingBottom = useResponsiveSpacing("sm");
   const paddingTop = useResponsiveSpacing("sm");
@@ -105,6 +105,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color }: { color: string }) => (
             <IconSymbol size={iconSize} name="gearshape.fill" color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="shipments"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
