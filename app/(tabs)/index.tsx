@@ -41,7 +41,7 @@ export default function HomeScreen() {
         </ThemedText>
       </ThemedView>
       <ThemedView className="gap-2 mb-2">
-        <Pressable onPress={() => router.push("/modal")}>
+        <Pressable onPress={() => router.push("/create")}>
           <ThemedText type="subtitle">Step 2: Explore</ThemedText>
         </Pressable>
         <ThemedText>

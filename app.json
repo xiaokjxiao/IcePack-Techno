@@ -31,12 +31,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/icepack logo-01 (1).png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#1a8ad4",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#1a3d5c"
           }
         }
       ]
