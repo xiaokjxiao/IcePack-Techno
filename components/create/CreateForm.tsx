@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
-import Toast from "react-native-toast-message";
 import { CargoCategoryPicker } from "@/components/create/CargoCategoryPicker";
 import { CalculationResult } from "@/components/create/CalculationResult";
 import { TempRangeCard } from "@/components/create/TempRangeCard";
@@ -9,10 +8,8 @@ import { CreateButtons } from "@/components/create/CreateButtons";
 import {
   PRODUCT_CATEGORIES,
   calculateIce,
-  getProduct,
   getProfileFor,
 } from "@/lib/icepack/data";
-import { supabase } from "@/lib/supabase";
 import { createShipment, createTrip } from "@/lib/icepack/services";
 import { useResponsiveFontSize } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
@@ -31,8 +28,7 @@ export function CreateForm() {
   const [notes, setNotes] = useState("");
 
   const profile = getProfileFor(productId);
-  const defaultName = `${getProduct(productId).label} Shipment`;
-  const displayName = shipmentName || defaultName;
+  const displayName = shipmentName || "None";
 
   const calc = useMemo(
     () => calculateIce(Number(cargoKg) || 0, Number(durationHours) || 0, profile),
@@ -40,16 +36,28 @@ export function CreateForm() {
   );
 
   const canSubmit = Number(cargoKg) > 0 && Number(durationHours) > 0;
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleCreate = async (startNow: boolean) => {
-    console.debug("handleCreate: called", { startNow });
-    if (!canSubmit) return;
-    console.debug("handleCreate: form values", { productId, displayName, cargoKg, durationHours, originLocation, destinationLocation, notes, calc });
-    console.debug("handleCreate: checking auth session...");
-    const { data: sessionData } = await supabase.auth.getSession();
-    console.debug("handleCreate: auth session", sessionData);
+    if (!canSubmit || isCreating) return;
+    setIsCreating(true);
     try {
-      const shipmentInput = {
+      let tripId: number | null = null;
+
+      if (startNow) {
+        const newTrip = await createTrip({
+          trip_name: displayName,
+          recommended_ice_kg: calc.recommendedIceKg,
+          ice_remaining_kg: calc.recommendedIceKg,
+          melt_rate_kg_per_hr: calc.meltRateKgPerHr,
+          safe_duration_hours: calc.safeDurationHours,
+          status: "active",
+          started_at: new Date().toISOString(),
+        });
+        tripId = newTrip.id;
+      }
+
+      const shipmentInput: Record<string, unknown> = {
         shipment_name: displayName,
         cargo_category: productId,
         cargo_kg: Number(cargoKg),
@@ -59,35 +67,26 @@ export function CreateForm() {
         origin_location: originLocation || null,
         destination_location: destinationLocation || null,
         notes: notes || null,
+        is_planned: !startNow,
       };
-      console.debug("handleCreate: calling createShipment with", shipmentInput);
-      const shipment = await createShipment(shipmentInput);
-      console.debug("handleCreate: createShipment succeeded", shipment);
-
-      const tripInput: Record<string, unknown> = {
-        shipment_id: shipment.id,
-        recommended_ice_kg: calc.recommendedIceKg,
-        ice_remaining_kg: calc.recommendedIceKg,
-        melt_rate_kg_per_hr: calc.meltRateKgPerHr,
-        safe_duration_hours: calc.safeDurationHours,
-        status: startNow ? "active" : "planned",
-      };
-      if (startNow) {
-        tripInput.started_at = new Date().toISOString();
+      if (tripId !== null) {
+        shipmentInput.trip_id = tripId;
       }
-      console.debug("handleCreate: calling createTrip with", tripInput);
-      await createTrip(tripInput as any);
-      console.debug("handleCreate: createTrip succeeded, navigating back");
-      Toast.show({
-        type: "success",
-        text1: "Shipment Created",
-        text2: startNow ? "Trip has been started" : "Saved as planned",
-        visibilityTime: 2000,
-        position: "bottom",
-      });
-      setTimeout(() => router.back(), 300);
+      await createShipment(shipmentInput as any);
+
+      setProductId(PRODUCT_CATEGORIES[0].id);
+      setShipmentName("");
+      setCargoKg("");
+      setDurationHours("");
+      setOriginLocation("");
+      setDestinationLocation("");
+      setNotes("");
+      setIsCreating(false);
+
+      router.replace("/(tabs)/");
     } catch (e) {
       console.error("handleCreate: Failed to create shipment", e);
+      setIsCreating(false);
     }
   };
 
@@ -138,7 +137,7 @@ export function CreateForm() {
         <TextInput
           value={shipmentName}
           onChangeText={setShipmentName}
-          placeholder={defaultName}
+          placeholder="Enter shipment name"
           placeholderTextColor="#9bb4c7"
           style={inputStyle}
         />
@@ -150,10 +149,7 @@ export function CreateForm() {
         <CargoCategoryPicker
           categories={PRODUCT_CATEGORIES}
           selectedId={productId}
-          onSelect={(id) => {
-            setProductId(id);
-            setShipmentName("");
-          }}
+          onSelect={(id) => setProductId(id)}
         />
       </View>
 
@@ -249,7 +245,7 @@ export function CreateForm() {
       />
 
       {/* 9. Submit Buttons */}
-      <CreateButtons canSubmit={canSubmit} onCreate={handleCreate} />
+      <CreateButtons canSubmit={canSubmit} loading={isCreating} onCreate={handleCreate} />
     </View>
   );
 }

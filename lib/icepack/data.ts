@@ -165,14 +165,14 @@ export interface Shipment {
   originLocation: string | null;
   destinationLocation: string | null;
   notes: string | null;
-  convoyId: string | null;
+  tripId: number | null;
   createdAt: string;
 }
 
 // Database-aligned trip record
 export interface TripRow {
   id: number;
-  shipmentId: number;
+  tripName: string;
   status: TripStatus;
   recommendedIceKg: number;
   iceRemainingKg: number;
@@ -187,6 +187,7 @@ export interface TripRow {
 // Combined view model used by the current UI layer
 export interface Trip {
   id: number;
+  shipmentId: number;
   name: string;
   productId: CargoCategory;
   cargoKg: number;
@@ -199,6 +200,7 @@ export interface Trip {
   startedAt: string | null;
   completedAt: string | null;
   createdAt: string;
+  notes: string | null;
   groupId?: string;
   groupName?: string;
 }

@@ -1,101 +1,142 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { TripCard } from "@/components/trips/TripCard";
+import { router, useFocusEffect } from "expo-router";
+import { Search, X, Layers } from "lucide-react-native";
+import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
+import { FilterBar, type FilterKey } from "@/components/shipments/FilterBar";
+import { SelectModeBanner } from "@/components/shipments/SelectModeBanner";
+import { GroupTripModal } from "@/components/shipments/GroupTripModal";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
 } from "@/hooks/use-responsive-size";
-import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
-import type { Trip, TripStatus } from "@/lib/icepack/data";
 import {
-  getTripsWithShipments,
-  updateTripStatus,
+  createGroupedTripFromShipments,
+  getShipmentsWithTrips,
 } from "@/lib/icepack/services";
-
-type FilterKey = "all" | TripStatus;
-
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "planned", label: "Planned" },
-  { key: "completed", label: "Completed" },
-  { key: "cancelled", label: "Cancelled" },
-];
-
-function countByStatus(trips: Trip[], status: TripStatus) {
-  return trips.filter((t) => t.status === status).length;
-}
 
 export default function ShipmentsScreen() {
   const insets = useSafeAreaInsets();
-  const { isTablet } = useScreenDimensions();
   const titleSize = useResponsiveFontSize("2xl");
   const labelSize = useResponsiveFontSize("sm");
   const padding = useResponsiveSpacing("lg");
 
   const [loading, setLoading] = useState(true);
-  const [allTrips, setAllTrips] = useState<Trip[]>([]);
+  const [allShipments, setAllShipments] = useState<ShipmentView[]>([]);
   const [filter, setFilter] = useState<FilterKey>("all");
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [groupName, setGroupName] = useState("");
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [groupLoading, setGroupLoading] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
         setLoading(true);
-        const trips = await getTripsWithShipments();
-        console.debug("ShipmentsScreen: loaded", trips.length, "trips");
-        setAllTrips(trips);
-      } catch (e) {
-        console.error("ShipmentsScreen: failed to load", e);
-      } finally {
-        setLoading(false);
+        try {
+          const shipments = await getShipmentsWithTrips();
+          setAllShipments(shipments);
+        } catch (e) {
+          console.error("ShipmentsScreen: failed to load", e);
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }, []),
+  );
+
+  const filteredByStatus = useMemo(
+    () => {
+      if (filter === "all") return allShipments;
+      if (filter === "planned") return allShipments.filter((s) => s.isPlanned);
+      return allShipments.filter((s) => s.tripStatus === filter);
+    },
+    [allShipments, filter],
+  );
+
+  const filteredShipments = useMemo(
+    () =>
+      searchQuery.trim()
+        ? filteredByStatus.filter((s) =>
+            s.name.toLowerCase().includes(searchQuery.toLowerCase()),
+          )
+        : filteredByStatus,
+    [filteredByStatus, searchQuery],
+  );
+
+  const plannedShipments = useMemo(
+    () => allShipments.filter((s) => s.isPlanned),
+    [allShipments],
+  );
+
+  const handleToggleSelect = useCallback((shipmentId: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(shipmentId)) {
+        next.delete(shipmentId);
+      } else {
+        next.add(shipmentId);
       }
-    })();
+      return next;
+    });
   }, []);
 
-  const filteredTrips = useMemo(
-    () =>
-      filter === "all"
-        ? allTrips
-        : allTrips.filter((t) => t.status === filter),
-    [allTrips, filter],
-  );
+  const handleGroup = useCallback(async () => {
+    if (selectedIds.size < 2) {
+      Alert.alert("Select at least 2 shipments to group");
+      return;
+    }
+    setShowGroupModal(true);
+  }, [selectedIds]);
 
-  const handleStatusChange = useCallback(
-    async (tripId: number, newStatus: TripStatus) => {
-      setActionLoading(tripId);
+  const handleCreateGroupedTrip = useCallback(
+    async (startNow: boolean) => {
+      const name = groupName.trim();
+      if (!name) {
+        Alert.alert("Please enter a group name");
+        return;
+      }
+      setGroupLoading(true);
+      setShowGroupModal(false);
       try {
-        console.debug("ShipmentsScreen: updating trip", tripId, "to", newStatus);
-        await updateTripStatus(tripId, newStatus);
-        setAllTrips((prev) =>
-          prev.map((t) =>
-            t.id === tripId ? { ...t, status: newStatus } : t,
-          ),
-        );
+        const selected = allShipments.filter((s) => selectedIds.has(s.id));
+        await createGroupedTripFromShipments(selected, name, startNow);
+        setAllShipments([]);
+        setSelectedIds(new Set());
+        setSelectMode(false);
+        setGroupName("");
+        router.replace("/(tabs)/");
       } catch (e) {
-        console.error("ShipmentsScreen: update failed", e);
-        Alert.alert("Error", "Failed to update shipment status");
+        console.error("ShipmentsScreen: group failed", e);
+        Alert.alert("Error", e instanceof Error ? e.message : "Failed to create group trip");
       } finally {
-        setActionLoading(null);
+        setGroupLoading(false);
       }
     },
-    [],
+    [groupName, selectedIds, allShipments],
   );
 
+  const handleCancelGroup = useCallback(() => {
+    setShowGroupModal(false);
+    setGroupName("");
+  }, []);
+
   return (
-    <ScrollView
-      className="flex-1 bg-white"
-      contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
-    >
+    <View className="flex-1 bg-white">
       <LinearGradient
         colors={["#173E61", "#246EA2"]}
         start={{ x: 0, y: 0 }}
@@ -107,158 +148,232 @@ export default function ShipmentsScreen() {
           paddingTop: insets.top + 16,
         }}
       >
-        <Text
-          style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}
-        >
-          All Shipments
-        </Text>
-        <Text
+        <View
           style={{
-            fontSize: labelSize,
-            color: "rgba(255,255,255,0.6)",
-            marginTop: 4,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
-          {allTrips.length} total — {countByStatus(allTrips, "active")} active,{" "}
-          {countByStatus(allTrips, "planned")} planned,{" "}
-          {countByStatus(allTrips, "completed")} completed
-        </Text>
-      </LinearGradient>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: padding,
-          paddingVertical: 12,
-          gap: 8,
-        }}
-      >
-        {FILTERS.map((f) => {
-          const active = filter === f.key;
-          return (
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}
+            >
+              All Shipments
+            </Text>
+            <Text
+              style={{
+                fontSize: labelSize,
+                color: "rgba(255,255,255,0.6)",
+                marginTop: 4,
+              }}
+            >
+              {allShipments.length} total —{" "}
+              {allShipments.filter((s) => s.tripStatus === "active").length} active,{" "}
+              {plannedShipments.length} planned,{" "}
+              {allShipments.filter((s) => s.tripStatus === "completed").length} done
+            </Text>
+          </View>
+          {!selectMode && (
             <TouchableOpacity
-              key={f.key}
-              onPress={() => setFilter(f.key)}
+              onPress={() => {
+                if (plannedShipments.length < 2) {
+                  Alert.alert(
+                    "Not enough planned shipments",
+                    "You need at least 2 planned shipments to create a group trip. Create shipments with 'Save as Planned' first.",
+                  );
+                  return;
+                }
+                setSelectMode(true);
+                setFilter("planned");
+                setSearchQuery("");
+              }}
               activeOpacity={0.7}
               style={{
-                paddingHorizontal: 16,
+                paddingHorizontal: 14,
                 paddingVertical: 8,
                 borderRadius: 20,
-                backgroundColor: active ? "#1a8ad4" : "#f4f8fa",
+                backgroundColor: "rgba(255,255,255,0.15)",
                 borderWidth: 1,
-                borderColor: active ? "#1a8ad4" : "#e8eef3",
+                borderColor: "rgba(255,255,255,0.25)",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Layers size={14} color="white" strokeWidth={2} />
+              <Text
+                style={{
+                  fontSize: labelSize,
+                  fontWeight: "600",
+                  color: "white",
+                }}
+              >
+                Group
+              </Text>
+            </TouchableOpacity>
+          )}
+          {selectMode && (
+            <TouchableOpacity
+              onPress={() => {
+                setSelectMode(false);
+                setSelectedIds(new Set());
+              }}
+              activeOpacity={0.7}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: "rgba(239, 68, 68, 0.2)",
+                borderWidth: 1,
+                borderColor: "rgba(239, 68, 68, 0.3)",
               }}
             >
               <Text
                 style={{
                   fontSize: labelSize,
                   fontWeight: "600",
-                  color: active ? "white" : "#587a94",
+                  color: "#fca5a5",
                 }}
               >
-                {f.label}
+                Cancel
               </Text>
             </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+          )}
+        </View>
 
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="#1a8ad4"
-          style={{ marginTop: 32 }}
+        {!selectMode && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "rgba(255,255,255,0.12)",
+              borderRadius: 12,
+              marginTop: 12,
+              paddingHorizontal: 12,
+              height: 40,
+            }}
+          >
+            <Search size={16} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search shipments..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              style={{
+                flex: 1,
+                fontSize: labelSize,
+                color: "white",
+                marginLeft: 8,
+                paddingVertical: 0,
+              }}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")} activeOpacity={0.7}>
+                <X size={16} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </LinearGradient>
+
+      {selectMode ? (
+        <SelectModeBanner
+          selectedCount={selectedIds.size}
+          totalPlanned={plannedShipments.length}
+          labelSize={labelSize}
         />
-      ) : filteredTrips.length === 0 ? (
-        <View style={{ alignItems: "center", marginTop: 48, paddingHorizontal: padding }}>
+      ) : (
+        <FilterBar
+          shipments={allShipments}
+          filter={filter}
+          labelSize={labelSize}
+          onFilterChange={setFilter}
+        />
+      )}
+
+      {selectMode && selectedIds.size >= 2 && (
+        <TouchableOpacity
+          onPress={handleGroup}
+          activeOpacity={0.8}
+          disabled={groupLoading}
+          style={{
+            marginHorizontal: padding,
+            marginBottom: 12,
+            paddingVertical: 12,
+            borderRadius: 12,
+            backgroundColor: groupLoading ? "#94c5e8" : "#0b2540",
+            alignItems: "center",
+          }}
+        >
           <Text
             style={{
               fontSize: labelSize,
-              color: "#9bb4c7",
-              textAlign: "center",
+              fontWeight: "700",
+              color: "white",
             }}
           >
-            No {filter === "all" ? "" : filter} shipments found
+            {groupLoading ? "Grouping..." : `Create Trip (${selectedIds.size})`}
           </Text>
-        </View>
-      ) : (
-        <View style={{ paddingHorizontal: padding, gap: 12, paddingTop: 8 }}>
-          {filteredTrips.map((trip) => (
-            <View key={trip.id}>
-              <TripCard trip={trip} />
-              {trip.status === "planned" && (
-                <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
-                  <TouchableOpacity
-                    onPress={() => handleStatusChange(trip.id, "active")}
-                    disabled={actionLoading === trip.id}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 10,
-                      borderRadius: 10,
-                      backgroundColor: actionLoading === trip.id ? "#94c5e8" : "#14b8a6",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "700", fontSize: labelSize }}>
-                      {actionLoading === trip.id ? "..." : "Start Trip"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleStatusChange(trip.id, "cancelled")}
-                    disabled={actionLoading === trip.id}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 10,
-                      borderRadius: 10,
-                      backgroundColor: actionLoading === trip.id ? "#f5a5a5" : "#ef4444",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "700", fontSize: labelSize }}>
-                      {actionLoading === trip.id ? "..." : "Cancel"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              {trip.status === "active" && (
-                <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
-                  <TouchableOpacity
-                    onPress={() => handleStatusChange(trip.id, "completed")}
-                    disabled={actionLoading === trip.id}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 10,
-                      borderRadius: 10,
-                      backgroundColor: actionLoading === trip.id ? "#94c5e8" : "#1a8ad4",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "700", fontSize: labelSize }}>
-                      {actionLoading === trip.id ? "..." : "Complete"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleStatusChange(trip.id, "cancelled")}
-                    disabled={actionLoading === trip.id}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 10,
-                      borderRadius: 10,
-                      backgroundColor: actionLoading === trip.id ? "#f5a5a5" : "#ef4444",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "700", fontSize: labelSize }}>
-                      {actionLoading === trip.id ? "..." : "Cancel"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
+        </TouchableOpacity>
       )}
-    </ScrollView>
+
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#1a8ad4"
+            style={{ marginTop: 32 }}
+          />
+        ) : filteredShipments.length === 0 ? (
+          <View style={{ alignItems: "center", marginTop: 48, paddingHorizontal: padding }}>
+            <Text
+              style={{
+                fontSize: labelSize,
+                color: "#9bb4c7",
+                textAlign: "center",
+              }}
+            >
+              {searchQuery.trim()
+                ? `No shipments matching "${searchQuery}"`
+                : `No ${filter === "all" ? "" : filter} shipments found`}
+            </Text>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: padding, gap: 12, paddingTop: 8 }}>
+            {filteredShipments.map((shipment) => (
+              <ShipmentCard
+                key={shipment.id}
+                shipment={shipment}
+                selectable={selectMode && shipment.isPlanned}
+                selected={selectedIds.has(shipment.id)}
+                onToggleSelect={
+                  selectMode && shipment.isPlanned
+                    ? handleToggleSelect
+                    : undefined
+                }
+              />
+            ))}
+          </View>
+        )}
+      </ScrollView>
+
+      <GroupTripModal
+        visible={showGroupModal}
+        selectedCount={selectedIds.size}
+        groupName={groupName}
+        onGroupNameChange={setGroupName}
+        groupLoading={groupLoading}
+        onCreateStart={() => handleCreateGroupedTrip(true)}
+        onSavePlanned={() => handleCreateGroupedTrip(false)}
+        onCancel={handleCancelGroup}
+        titleSize={titleSize}
+        labelSize={labelSize}
+      />
+    </View>
   );
 }

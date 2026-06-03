@@ -1,5 +1,11 @@
 import type { Database } from "@/lib/database.types";
-import type { Trip, TripStatus } from "@/lib/icepack/data";
+import {
+  calculateIce,
+  getProfileFor,
+  type Trip,
+  type TripStatus,
+} from "@/lib/icepack/data";
+import type { ShipmentView } from "@/components/shipments/ShipmentCard";
 import { supabase } from "@/lib/supabase";
 
 type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
@@ -9,6 +15,8 @@ type ShipmentUpdate = Database["public"]["Tables"]["shipments"]["Update"];
 type TripRow = Database["public"]["Tables"]["trips"]["Row"];
 type TripInsert = Database["public"]["Tables"]["trips"]["Insert"];
 type TripUpdate = Database["public"]["Tables"]["trips"]["Update"];
+
+type TripWithShipments = TripRow & { shipments: ShipmentRow[] };
 
 // ---------- Shipment services ----------
 
@@ -32,18 +40,12 @@ export async function getShipment(id: number) {
 }
 
 export async function createShipment(input: ShipmentInsert) {
-  console.debug("createShipment: input", input);
   const { data, error } = await supabase
     .from("shipments")
     .insert(input)
     .select()
     .single();
-  console.debug("createShipment: supabase response", { data, error });
-  if (error) {
-    console.debug("createShipment: throwing error", error);
-    throw error;
-  }
-  console.debug("createShipment: success, returning", data);
+  if (error) throw error;
   return data as ShipmentRow;
 }
 
@@ -65,11 +67,10 @@ export async function deleteShipment(id: number) {
 
 // ---------- Trip services ----------
 
-export async function getTripsByShipment(shipmentId: number) {
+export async function getTrips() {
   const { data, error } = await supabase
     .from("trips")
     .select("*")
-    .eq("shipment_id", shipmentId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data as TripRow[];
@@ -90,19 +91,12 @@ export async function createTrip(input: Omit<TripInsert, "updated_at">) {
     ...input,
     updated_at: new Date().toISOString(),
   };
-  console.debug("createTrip: input", input);
-  console.debug("createTrip: payload with updated_at", payload);
   const { data, error } = await supabase
     .from("trips")
     .insert(payload)
     .select()
     .single();
-  console.debug("createTrip: supabase response", { data, error });
-  if (error) {
-    console.debug("createTrip: throwing error", error);
-    throw error;
-  }
-  console.debug("createTrip: success, returning", data);
+  if (error) throw error;
   return data as TripRow;
 }
 
@@ -150,53 +144,14 @@ export async function deleteTrip(id: number) {
 
 // ---------- Combined view ----------
 
-type TripWithShipment = TripRow & { shipment: ShipmentRow };
-
-export async function getTripsWithShipments() {
-  console.debug("getTripsWithShipments: request");
-  const { data, error } = await supabase
-    .from("trips")
-    .select("*, shipment:shipments(*)")
-    .order("created_at", { ascending: false });
-  if (error) {
-    console.debug("getTripsWithShipments: error", error);
-    throw error;
-  }
-
-  console.debug("getTripsWithShipments: raw response", data);
-  const mapped = (data as TripWithShipment[]).map(mapTripWithShipment);
-  console.debug("getTripsWithShipments: mapped", mapped);
-  return mapped;
-}
-
-export async function getTripsWithShipmentsByStatus(status: TripStatus) {
-  console.debug("getTripsWithShipmentsByStatus: request", { status });
-  const { data, error } = await supabase
-    .from("trips")
-    .select("*, shipment:shipments(*)")
-    .eq("status", status)
-    .order("created_at", { ascending: false });
-  if (error) {
-    console.debug("getTripsWithShipmentsByStatus: error", { status, error });
-    throw error;
-  }
-
-  console.debug("getTripsWithShipmentsByStatus: raw response", {
-    status,
-    data,
-  });
-  const mapped = (data as TripWithShipment[]).map(mapTripWithShipment);
-  console.debug("getTripsWithShipmentsByStatus: mapped", { status, mapped });
-  return mapped;
-}
-
-function mapTripWithShipment(row: TripWithShipment): Trip {
+function mapTripWithShipment(row: TripWithShipments, shipment: ShipmentRow): Trip {
   return {
     id: row.id,
-    name: row.shipment.shipment_name,
-    productId: row.shipment.cargo_category,
-    cargoKg: row.shipment.cargo_kg,
-    durationHours: row.shipment.duration_hours,
+    shipmentId: shipment.id,
+    name: row.trip_name || shipment.shipment_name,
+    productId: shipment.cargo_category,
+    cargoKg: shipment.cargo_kg,
+    durationHours: shipment.duration_hours,
     recommendedIceKg: row.recommended_ice_kg,
     iceRemainingKg: row.ice_remaining_kg,
     meltRateKgPerHr: row.melt_rate_kg_per_hr,
@@ -205,5 +160,161 @@ function mapTripWithShipment(row: TripWithShipment): Trip {
     startedAt: row.started_at,
     completedAt: row.completed_at,
     createdAt: row.created_at,
+    notes: shipment.notes,
   };
+}
+
+export async function getTripsWithShipments() {
+  const [{ data: trips }, { data: allShipments }] = await Promise.all([
+    supabase.from("trips").select("*").order("created_at", { ascending: false }),
+    supabase.from("shipments").select("*"),
+  ]);
+
+  if (trips?.length) {
+    const shipmentsMap = new Map<number, ShipmentRow[]>();
+    for (const s of (allShipments ?? [])) {
+      if (s.trip_id != null) {
+        const arr = shipmentsMap.get(s.trip_id) || [];
+        arr.push(s);
+        shipmentsMap.set(s.trip_id, arr);
+      }
+    }
+    return trips.map((t) => {
+      const tripShipments = shipmentsMap.get(t.id) ?? [];
+      const shipment = tripShipments[0];
+      return shipment ? mapTripWithShipment(t as TripWithShipments, shipment) : null;
+    }).filter(Boolean) as Trip[];
+  }
+  return [] as Trip[];
+}
+
+export async function getTripsWithShipmentsByStatus(status: TripStatus) {
+  const { data: trips, error } = await supabase
+    .from("trips")
+    .select("*, shipments(*)")
+    .eq("status", status)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return (trips as unknown as TripWithShipments[]).map((t) => {
+    const shipment = t.shipments?.[0];
+    return shipment ? mapTripWithShipment(t, shipment) : null;
+  }).filter(Boolean) as Trip[];
+}
+
+export async function getTripWithShipmentsById(tripId: number): Promise<Trip | null> {
+  const { data, error } = await supabase
+    .from("trips")
+    .select("*, shipments(*)")
+    .eq("id", tripId)
+    .single();
+  if (error) return null;
+  const row = data as unknown as TripWithShipments;
+  const shipment = row.shipments?.[0];
+  return shipment ? mapTripWithShipment(row, shipment) : null;
+}
+
+export async function updateShipmentTrip(shipmentId: number, tripId: number, isPlanned = false) {
+  const { error } = await supabase
+    .from("shipments")
+    .update({ trip_id: tripId, is_planned: isPlanned })
+    .eq("id", shipmentId);
+  if (error) {
+    console.error("updateShipmentTrip failed:", error);
+    throw error;
+  }
+  console.log("updateShipmentTrip OK: shipment", shipmentId, "-> trip", tripId, "isPlanned:", isPlanned);
+}
+
+export async function getShipmentsByTripId(tripId: number): Promise<ShipmentRow[]> {
+  const { data, error } = await supabase
+    .from("shipments")
+    .select("*")
+    .eq("trip_id", tripId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as ShipmentRow[];
+}
+
+export async function getShipmentsWithTrips() {
+  const { data: shipments, error } = await supabase
+    .from("shipments")
+    .select("*, trip:trips(*)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return (shipments as (ShipmentRow & { trip: TripRow | null })[]).map((s) => ({
+    id: s.id,
+    name: s.shipment_name,
+    productId: s.cargo_category,
+    cargoKg: s.cargo_kg,
+    durationHours: s.duration_hours,
+    originLocation: s.origin_location,
+    destinationLocation: s.destination_location,
+    tripId: s.trip_id,
+    tripName: s.trip?.trip_name ?? null,
+    tripStatus: s.trip?.status ?? null,
+    isPlanned: s.is_planned ?? false,
+  }));
+}
+
+export async function createGroupedTrip(
+  selectedTrips: Trip[],
+  groupName: string,
+  startNow: boolean,
+) {
+  const newTrip = await createTrip({
+    trip_name: groupName,
+    recommended_ice_kg: selectedTrips.reduce((s, t) => s + t.recommendedIceKg, 0),
+    ice_remaining_kg: selectedTrips.reduce((s, t) => s + t.iceRemainingKg, 0),
+    melt_rate_kg_per_hr: selectedTrips.reduce((s, t) => s + t.meltRateKgPerHr, 0),
+    safe_duration_hours: Math.min(...selectedTrips.map((t) => t.safeDurationHours)),
+    status: startNow ? "active" : "planned",
+    started_at: startNow ? new Date().toISOString() : null,
+  });
+
+  for (const trip of selectedTrips) {
+    await updateShipmentTrip(trip.shipmentId, newTrip.id, !startNow);
+  }
+
+  return newTrip;
+}
+
+export async function createGroupedTripFromShipments(
+  selectedShipments: ShipmentView[],
+  groupName: string,
+  startNow: boolean,
+) {
+  let totalRecommendedIceKg = 0;
+  let totalMeltRateKgPerHr = 0;
+  let minSafeDurationHours = Infinity;
+
+  for (const s of selectedShipments) {
+    const profile = getProfileFor(s.productId);
+    const calc = calculateIce(s.cargoKg, s.durationHours, profile);
+    totalRecommendedIceKg += calc.recommendedIceKg;
+    totalMeltRateKgPerHr += calc.meltRateKgPerHr;
+    minSafeDurationHours = Math.min(minSafeDurationHours, calc.safeDurationHours);
+  }
+
+  if (minSafeDurationHours === Infinity) minSafeDurationHours = 0;
+
+  const newTrip = await createTrip({
+    trip_name: groupName,
+    recommended_ice_kg: totalRecommendedIceKg,
+    ice_remaining_kg: totalRecommendedIceKg,
+    melt_rate_kg_per_hr: totalMeltRateKgPerHr,
+    safe_duration_hours: minSafeDurationHours,
+    status: startNow ? "active" : "planned",
+    started_at: startNow ? new Date().toISOString() : null,
+  });
+
+  console.log("createGroupedTripFromShipments: new trip", newTrip.id, newTrip.trip_name);
+
+  for (const shipment of selectedShipments) {
+    await updateShipmentTrip(shipment.id, newTrip.id, !startNow);
+  }
+
+  console.log("createGroupedTripFromShipments: done, updated", selectedShipments.length, "shipments");
+  return newTrip;
 }

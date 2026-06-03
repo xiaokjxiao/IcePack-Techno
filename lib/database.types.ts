@@ -12,55 +12,88 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       shipments: {
         Row: {
           cargo_category: Database["public"]["Enums"]["cargo_category_enum"]
           cargo_kg: number
-          container_type: Database["public"]["Enums"]["container_type_enum"]
-          convoy_id: string | null
           created_at: string
           destination_location: string | null
           duration_hours: number
           id: number
+          is_planned: boolean
           notes: string | null
           origin_location: string | null
           shipment_name: string
           target_temp_max_c: number | null
           target_temp_min_c: number | null
+          trip_id: number | null
         }
         Insert: {
           cargo_category: Database["public"]["Enums"]["cargo_category_enum"]
           cargo_kg: number
-          container_type: Database["public"]["Enums"]["container_type_enum"]
-          convoy_id?: string | null
           created_at?: string
           destination_location?: string | null
           duration_hours: number
           id?: number
+          is_planned?: boolean
           notes?: string | null
           origin_location?: string | null
           shipment_name: string
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
+          trip_id?: number | null
         }
         Update: {
           cargo_category?: Database["public"]["Enums"]["cargo_category_enum"]
           cargo_kg?: number
-          container_type?: Database["public"]["Enums"]["container_type_enum"]
-          convoy_id?: string | null
           created_at?: string
           destination_location?: string | null
           duration_hours?: number
           id?: number
+          is_planned?: boolean
           notes?: string | null
           origin_location?: string | null
           shipment_name?: string
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
+          trip_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_trip"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trips: {
         Row: {
@@ -71,9 +104,9 @@ export type Database = {
           melt_rate_kg_per_hr: number
           recommended_ice_kg: number
           safe_duration_hours: number
-          shipment_id: number
           started_at: string | null
           status: Database["public"]["Enums"]["trip_status_enum"]
+          trip_name: string
           updated_at: string
         }
         Insert: {
@@ -84,9 +117,9 @@ export type Database = {
           melt_rate_kg_per_hr: number
           recommended_ice_kg: number
           safe_duration_hours: number
-          shipment_id: number
           started_at?: string | null
           status?: Database["public"]["Enums"]["trip_status_enum"]
+          trip_name?: string
           updated_at?: string
         }
         Update: {
@@ -97,20 +130,12 @@ export type Database = {
           melt_rate_kg_per_hr?: number
           recommended_ice_kg?: number
           safe_duration_hours?: number
-          shipment_id?: number
           started_at?: string | null
           status?: Database["public"]["Enums"]["trip_status_enum"]
+          trip_name?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "trips_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "shipments"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
@@ -130,13 +155,6 @@ export type Database = {
         | "electronics"
         | "cosmetics"
         | "agricultural_products"
-      container_type_enum:
-        | "reefer_container"
-        | "insulated_container"
-        | "blast_freezer_container"
-        | "pharma_container"
-        | "modular_cold_box"
-        | "ice_chilled_carrier"
       trip_status_enum: "planned" | "active" | "completed" | "cancelled"
     }
     CompositeTypes: {
@@ -263,6 +281,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       cargo_category_enum: [
@@ -275,14 +296,6 @@ export const Constants = {
         "electronics",
         "cosmetics",
         "agricultural_products",
-      ],
-      container_type_enum: [
-        "reefer_container",
-        "insulated_container",
-        "blast_freezer_container",
-        "pharma_container",
-        "modular_cold_box",
-        "ice_chilled_carrier",
       ],
       trip_status_enum: ["planned", "active", "completed", "cancelled"],
     },
