@@ -27,6 +27,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="trips/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="shipments/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="monitor/[id]" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="dark" />
           <Toast />

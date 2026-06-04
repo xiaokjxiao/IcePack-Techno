@@ -146,6 +146,8 @@ export default function ShipmentsScreen() {
           paddingRight: padding,
           paddingBottom: padding,
           paddingTop: insets.top + 16,
+          borderBottomLeftRadius: 24,
+          borderBottomRightRadius: 24,
         }}
       >
         <View

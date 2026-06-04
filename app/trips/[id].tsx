@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -9,30 +10,41 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { TripCard } from "@/components/trips/TripCard";
+import { Play, CheckCircle2, XCircle, Gauge } from "lucide-react-native";
+import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
 } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 import type { Database } from "@/lib/database.types";
-import type { Trip } from "@/lib/icepack/data";
+import type { Trip, TripStatus } from "@/lib/icepack/data";
 import {
   getTripWithShipmentsById,
   getShipmentsByTripId,
+  updateTripStatus,
 } from "@/lib/icepack/services";
 
 type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
 
-function shipmentToTrip(s: ShipmentRow, tripData: Trip): Trip {
+function toShipmentView(s: ShipmentRow, trip: Trip): ShipmentView {
   return {
-    ...tripData,
-    id: tripData.id,
-    shipmentId: s.id,
+    id: s.id,
     name: s.shipment_name,
     productId: s.cargo_category,
     cargoKg: s.cargo_kg,
     durationHours: s.duration_hours,
+    originLocation: s.origin_location,
+    destinationLocation: s.destination_location,
+    tripId: trip.id,
+    tripName: trip.name,
+    tripStatus: trip.status,
+    isPlanned: s.is_planned ?? false,
+    recommendedIceKg: s.recommended_ice_kg ?? null,
+    iceRemainingKg: s.ice_remaining_kg ?? null,
+    meltRateKgPerHr: s.melt_rate_kg_per_hr ?? null,
+    safeDurationHours: s.safe_duration_hours ?? null,
+    startedAt: trip.startedAt,
   };
 }
 
@@ -46,7 +58,8 @@ export default function TripDetailScreen() {
 
   const [loading, setLoading] = useState(true);
   const [trip, setTrip] = useState<Trip | null>(null);
-  const [groupedTrips, setGroupedTrips] = useState<Trip[]>([]);
+  const [allShipments, setAllShipments] = useState<ShipmentRow[]>([]);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -58,12 +71,9 @@ export default function TripDetailScreen() {
           setTrip(mainTrip);
           if (mainTrip?.id) {
             const shipments = await getShipmentsByTripId(mainTrip.id);
-            const others = shipments
-              .filter((s) => s.id !== mainTrip.shipmentId)
-              .map((s) => shipmentToTrip(s, mainTrip));
-            setGroupedTrips(others);
+            setAllShipments(shipments);
           } else {
-            setGroupedTrips([]);
+            setAllShipments([]);
           }
         } catch (e) {
           console.error("TripDetailScreen: failed to load", e);
@@ -72,6 +82,22 @@ export default function TripDetailScreen() {
         }
       })();
     }, [id]),
+  );
+
+  const handleStatusChange = useCallback(
+    async (newStatus: TripStatus) => {
+      if (!trip) return;
+      setActionLoading(true);
+      try {
+        await updateTripStatus(trip.id, newStatus);
+        setTrip((prev) => prev ? { ...prev, status: newStatus } : null);
+      } catch (e) {
+        Alert.alert("Error", "Failed to update status");
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [trip],
   );
 
   if (loading) {
@@ -132,7 +158,7 @@ export default function TripDetailScreen() {
         >
           {trip.name}
         </Text>
-        {groupedTrips.length > 0 && (
+        {allShipments.length > 1 && (
           <View
             style={{
               flexDirection: "row",
@@ -165,7 +191,7 @@ export default function TripDetailScreen() {
                 color: "rgba(255,255,255,0.6)",
               }}
             >
-              {groupedTrips.length + 1} shipments
+              {allShipments.length} shipments
             </Text>
           </View>
         )}
@@ -181,43 +207,108 @@ export default function TripDetailScreen() {
       </LinearGradient>
 
       <View style={{ paddingHorizontal: padding, paddingTop: padding, gap: 12 }}>
-        <TripCard trip={trip} />
+        {allShipments.map((s) => (
+          <ShipmentCard key={s.id} shipment={toShipmentView(s, trip)} />
+        ))}
 
-        {groupedTrips.length > 0 && (
-          <>
-            <View
+        {/* Action Buttons */}
+        <View style={{ paddingTop: 8, paddingBottom: 20, gap: 10 }}>
+          {trip.status === "planned" && (
+            <TouchableOpacity
+              onPress={() => handleStatusChange("active")}
+              disabled={actionLoading}
+              activeOpacity={0.85}
               style={{
-                marginTop: 16,
-                marginBottom: 8,
-                paddingTop: 16,
-                borderTopWidth: 1,
-                borderTopColor: "#e8eef3",
+                paddingVertical: 14,
+                borderRadius: 12,
+                backgroundColor: actionLoading ? "#94c5e8" : "#14b8a6",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
               }}
             >
-              <Text
-                style={{
-                  fontSize: titleSize * 0.7,
-                  fontWeight: "600",
-                  color: "#0b2540",
-                }}
-              >
-                Grouped Shipments ({groupedTrips.length})
+              {actionLoading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Play size={18} color="white" strokeWidth={2} />
+              )}
+              <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
+                {actionLoading ? "Starting..." : "Start Trip"}
               </Text>
-              <Text
+            </TouchableOpacity>
+          )}
+
+          {trip.status === "active" && (
+            <>
+              <TouchableOpacity
+                onPress={() => handleStatusChange("completed")}
+                disabled={actionLoading}
+                activeOpacity={0.85}
                 style={{
-                  fontSize: labelSize,
-                  color: "#587a94",
-                  marginTop: 2,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  backgroundColor: actionLoading ? "#94c5e8" : "#1a8ad4",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
                 }}
               >
-                All shipments in this group
+                {actionLoading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <CheckCircle2 size={18} color="white" strokeWidth={2} />
+                )}
+                <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
+                  {actionLoading ? "Completing..." : "Complete Trip"}
+                </Text>
+              </TouchableOpacity>
+
+            </>
+          )}
+
+          {trip.status !== "completed" && trip.status !== "cancelled" && (
+            <TouchableOpacity
+              onPress={() => handleStatusChange("cancelled")}
+              disabled={actionLoading}
+              activeOpacity={0.85}
+              style={{
+                paddingVertical: 14,
+                borderRadius: 12,
+                backgroundColor: "#fff",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                borderWidth: 1,
+                borderColor: "#e8eef3",
+              }}
+            >
+              <XCircle size={18} color="#ef4444" strokeWidth={2} />
+              <Text style={{ fontSize: labelSize, fontWeight: "600", color: "#ef4444" }}>
+                Cancel Trip
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {trip.status === "completed" && (
+            <View
+              style={{
+                backgroundColor: "#f0fdf4",
+                borderRadius: 12,
+                padding: 14,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: "#bbf7d0",
+              }}
+            >
+              <Text style={{ fontSize: labelSize, color: "#16a34a", fontWeight: "600" }}>
+                Completed
               </Text>
             </View>
-            {groupedTrips.map((t) => (
-              <TripCard key={t.shipmentId} trip={t} />
-            ))}
-          </>
-        )}
+          )}
+        </View>
       </View>
     </ScrollView>
   );

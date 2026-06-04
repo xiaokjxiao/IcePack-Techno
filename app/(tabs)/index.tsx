@@ -1,19 +1,50 @@
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { router, useFocusEffect, Link } from "expo-router";
+import { useFocusEffect, Link } from "expo-router";
 import { ArrowRight } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatCard } from "@/components/trips/StatCard";
+import { TripCard } from "@/components/trips/TripCard";
 import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
 } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
+import type { Trip } from "@/lib/icepack/data";
+import { liveStateFor } from "@/lib/icepack/data";
 import { getShipmentsWithTrips } from "@/lib/icepack/services";
 
-export default function Header() {
+function toTrip(s: ShipmentView): Trip {
+  return {
+    id: s.tripId ?? s.id,
+    shipmentId: s.id,
+    name: s.tripName ?? s.name,
+    productId: s.productId,
+    cargoKg: s.cargoKg,
+    durationHours: s.durationHours,
+    recommendedIceKg: s.recommendedIceKg ?? 0,
+    iceRemainingKg: s.iceRemainingKg ?? 0,
+    meltRateKgPerHr: s.meltRateKgPerHr ?? 0,
+    safeDurationHours: s.safeDurationHours ?? 0,
+    status: s.tripStatus ?? "planned",
+    startedAt: s.startedAt ?? null,
+    completedAt: null,
+    createdAt: "",
+    notes: null,
+  };
+}
+
+function isShipmentCritical(s: ShipmentView): boolean {
+  if (s.tripStatus !== "active") return false;
+  if (s.recommendedIceKg == null || s.iceRemainingKg == null || s.meltRateKgPerHr == null || s.safeDurationHours == null) return false;
+  const trip = toTrip(s);
+  const live = liveStateFor(trip);
+  return live.risk === "critical";
+}
+
+export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { isTablet, isLandscape } = useScreenDimensions();
   const titleFontSize = useResponsiveFontSize("3xl");
@@ -21,7 +52,6 @@ export default function Header() {
   const horizontalPadding = useResponsiveSpacing("lg");
   const verticalPadding = useResponsiveSpacing("lg");
   const gapSize = useResponsiveSpacing("md");
-  const baseFontSize = useResponsiveFontSize("base");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,16 +75,19 @@ export default function Header() {
   );
 
   const activeShipments = shipments.filter((s) => s.tripStatus === "active");
-  const plannedShipments = shipments.filter((s) => s.isPlanned);
   const completedShipments = shipments.filter((s) => s.tripStatus === "completed");
+  const plannedShipments = shipments.filter((s) => s.isPlanned);
+
+  const criticalShipments = activeShipments.filter(isShipmentCritical);
 
   const stats = {
     active: activeShipments.length,
-    planned: plannedShipments.length,
+    critical: criticalShipments.length,
     completed: completedShipments.length,
+    planned: plannedShipments.length,
   };
-  const recentActive = activeShipments.slice(0, 3);
-  const recentPlanned = plannedShipments.slice(0, 3);
+
+  const recentActive = activeShipments.slice(0, 5);
 
   const activeGrouped = useMemo(() => {
     const groups = new Map<number, ShipmentView[]>();
@@ -79,31 +112,9 @@ export default function Header() {
     return { groups: multi, solo };
   }, [recentActive]);
 
-  const plannedGrouped = useMemo(() => {
-    const groups = new Map<number, ShipmentView[]>();
-    const solo: ShipmentView[] = [];
-    for (const s of recentPlanned) {
-      if (s.tripId != null) {
-        const arr = groups.get(s.tripId) || [];
-        arr.push(s);
-        groups.set(s.tripId, arr);
-      } else {
-        solo.push(s);
-      }
-    }
-    const multi: [number, ShipmentView[]][] = [];
-    for (const [tripId, shipments] of groups) {
-      if (shipments.length >= 2) {
-        multi.push([tripId, shipments]);
-      } else {
-        solo.push(...shipments);
-      }
-    }
-    return { groups: multi, solo };
-  }, [recentPlanned]);
-
   const statCards: { label: string; value: string; accent?: boolean }[] = [
     { label: "Active", value: String(stats.active).padStart(2, "0") },
+    { label: "Critical", value: String(stats.critical).padStart(2, "0"), accent: stats.critical > 0 },
     { label: "Completed", value: String(stats.completed).padStart(2, "0") },
     { label: "Planned", value: String(stats.planned).padStart(2, "0") },
   ];
@@ -239,33 +250,8 @@ export default function Header() {
           {error}
         </Text>
       ) : (
-        <View style={{ paddingHorizontal: horizontalPadding }}>
-          <TouchableOpacity
-            onPress={() => router.push("/shipments")}
-            activeOpacity={0.8}
-            style={{
-              backgroundColor: "#f4f8fa",
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: "#e8eef3",
-              paddingVertical: 14,
-              alignItems: "center",
-              marginTop: verticalPadding,
-              marginBottom: 12,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: baseFontSize,
-                fontWeight: "700",
-                color: "#1a8ad4",
-              }}
-            >
-              View All Shipments
-            </Text>
-          </TouchableOpacity>
-
-          <View style={{ marginTop: 0 }}>
+        <View style={{ paddingHorizontal: horizontalPadding, paddingTop: verticalPadding }}>
+          <View>
             <View
               style={{
                 flexDirection: "row",
@@ -277,13 +263,13 @@ export default function Header() {
               <Text
                 style={{
                   fontSize: gapSize,
-                  fontWeight: "500",
-                  color: "rgba(0,0,0,0.65)",
+                  fontWeight: "600",
+                  color: "#0b2540",
                 }}
               >
                 Active Shipments
               </Text>
-              <Link href="/shipments" asChild>
+              <Link href="/trips" asChild>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   style={{
@@ -299,7 +285,7 @@ export default function Header() {
                       color: "#1a8ad4",
                     }}
                   >
-                    View All Trips
+                    View All
                   </Text>
                   <ArrowRight size={14} color="#1a8ad4" strokeWidth={2} />
                 </TouchableOpacity>
@@ -351,70 +337,7 @@ export default function Header() {
                   </View>
                 ))}
                 {activeGrouped.solo.map((s) => (
-                  <ShipmentCard key={s.id} shipment={s} />
-                ))}
-              </View>
-            )}
-          </View>
-
-          <View>
-            <Text
-              style={{
-                fontSize: gapSize,
-                fontWeight: "500",
-                color: "rgba(0,0,0,0.65)",
-                marginBottom: 8,
-              }}
-            >
-              Planned Shipments
-            </Text>
-            {recentPlanned.length === 0 ? (
-              <Text
-                style={{
-                  fontSize: subtitleFontSize,
-                  color: "rgba(0,0,0,0.4)",
-                  marginBottom: 16,
-                }}
-              >
-                No planned shipments
-              </Text>
-            ) : (
-              <View style={{ gap: 12, marginBottom: 24 }}>
-                {plannedGrouped.groups.map(([tripId, groupShipments]) => (
-                  <View
-                    key={`group-${tripId}`}
-                    className="rounded-2xl bg-sea-50 border border-sea-200"
-                    style={{ padding: 10 }}
-                  >
-                    <Link href={`/trips/${tripId}` as any} asChild>
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        className="flex-row items-center justify-between"
-                        style={{ paddingHorizontal: 6, paddingBottom: 8 }}
-                      >
-                        <View className="flex-row items-center gap-2">
-                          <View className="size-2 rounded-full bg-sea-600" />
-                          <Text className="text-sea-900 font-semibold text-xs uppercase tracking-wider">
-                            {groupShipments[0]?.tripName ?? `Trip #${tripId}`}
-                          </Text>
-                        </View>
-                        <View className="flex-row items-center gap-1">
-                          <Text className="text-[10px] font-semibold text-sea-700">
-                            {groupShipments.length} shipments
-                          </Text>
-                          <ArrowRight size={10} color="#0369a1" strokeWidth={2.5} />
-                        </View>
-                      </TouchableOpacity>
-                    </Link>
-                    <View style={{ gap: 8 }}>
-                      {groupShipments.map((s) => (
-                        <ShipmentCard key={s.id} shipment={s} />
-                      ))}
-                    </View>
-                  </View>
-                ))}
-                {plannedGrouped.solo.map((s) => (
-                  <ShipmentCard key={s.id} shipment={s} />
+                  <TripCard key={s.id} trip={toTrip(s)} />
                 ))}
               </View>
             )}

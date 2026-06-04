@@ -152,10 +152,10 @@ function mapTripWithShipment(row: TripWithShipments, shipment: ShipmentRow): Tri
     productId: shipment.cargo_category,
     cargoKg: shipment.cargo_kg,
     durationHours: shipment.duration_hours,
-    recommendedIceKg: row.recommended_ice_kg,
-    iceRemainingKg: row.ice_remaining_kg,
-    meltRateKgPerHr: row.melt_rate_kg_per_hr,
-    safeDurationHours: row.safe_duration_hours,
+    recommendedIceKg: shipment.recommended_ice_kg ?? 0,
+    iceRemainingKg: shipment.ice_remaining_kg ?? 0,
+    meltRateKgPerHr: shipment.melt_rate_kg_per_hr ?? 0,
+    safeDurationHours: shipment.safe_duration_hours ?? 0,
     status: row.status,
     startedAt: row.started_at,
     completedAt: row.completed_at,
@@ -255,6 +255,11 @@ export async function getShipmentsWithTrips() {
     tripName: s.trip?.trip_name ?? null,
     tripStatus: s.trip?.status ?? null,
     isPlanned: s.is_planned ?? false,
+    recommendedIceKg: s.recommended_ice_kg ?? null,
+    iceRemainingKg: s.ice_remaining_kg ?? null,
+    meltRateKgPerHr: s.melt_rate_kg_per_hr ?? null,
+    safeDurationHours: s.safe_duration_hours ?? null,
+    startedAt: s.trip?.started_at ?? null,
   }));
 }
 
@@ -265,10 +270,6 @@ export async function createGroupedTrip(
 ) {
   const newTrip = await createTrip({
     trip_name: groupName,
-    recommended_ice_kg: selectedTrips.reduce((s, t) => s + t.recommendedIceKg, 0),
-    ice_remaining_kg: selectedTrips.reduce((s, t) => s + t.iceRemainingKg, 0),
-    melt_rate_kg_per_hr: selectedTrips.reduce((s, t) => s + t.meltRateKgPerHr, 0),
-    safe_duration_hours: Math.min(...selectedTrips.map((t) => t.safeDurationHours)),
     status: startNow ? "active" : "planned",
     started_at: startNow ? new Date().toISOString() : null,
   });
@@ -285,34 +286,28 @@ export async function createGroupedTripFromShipments(
   groupName: string,
   startNow: boolean,
 ) {
-  let totalRecommendedIceKg = 0;
-  let totalMeltRateKgPerHr = 0;
-  let minSafeDurationHours = Infinity;
-
-  for (const s of selectedShipments) {
-    const profile = getProfileFor(s.productId);
-    const calc = calculateIce(s.cargoKg, s.durationHours, profile);
-    totalRecommendedIceKg += calc.recommendedIceKg;
-    totalMeltRateKgPerHr += calc.meltRateKgPerHr;
-    minSafeDurationHours = Math.min(minSafeDurationHours, calc.safeDurationHours);
-  }
-
-  if (minSafeDurationHours === Infinity) minSafeDurationHours = 0;
-
   const newTrip = await createTrip({
     trip_name: groupName,
-    recommended_ice_kg: totalRecommendedIceKg,
-    ice_remaining_kg: totalRecommendedIceKg,
-    melt_rate_kg_per_hr: totalMeltRateKgPerHr,
-    safe_duration_hours: minSafeDurationHours,
     status: startNow ? "active" : "planned",
     started_at: startNow ? new Date().toISOString() : null,
   });
 
   console.log("createGroupedTripFromShipments: new trip", newTrip.id, newTrip.trip_name);
 
-  for (const shipment of selectedShipments) {
-    await updateShipmentTrip(shipment.id, newTrip.id, !startNow);
+  for (const s of selectedShipments) {
+    const profile = getProfileFor(s.productId);
+    const calc = calculateIce(s.cargoKg, s.durationHours, profile);
+    await supabase
+      .from("shipments")
+      .update({
+        trip_id: newTrip.id,
+        is_planned: !startNow,
+        recommended_ice_kg: calc.recommendedIceKg,
+        ice_remaining_kg: calc.recommendedIceKg,
+        melt_rate_kg_per_hr: calc.meltRateKgPerHr,
+        safe_duration_hours: calc.safeDurationHours,
+      })
+      .eq("id", s.id);
   }
 
   console.log("createGroupedTripFromShipments: done, updated", selectedShipments.length, "shipments");

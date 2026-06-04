@@ -47,10 +47,6 @@ export function CreateForm() {
       if (startNow) {
         const newTrip = await createTrip({
           trip_name: displayName,
-          recommended_ice_kg: calc.recommendedIceKg,
-          ice_remaining_kg: calc.recommendedIceKg,
-          melt_rate_kg_per_hr: calc.meltRateKgPerHr,
-          safe_duration_hours: calc.safeDurationHours,
           status: "active",
           started_at: new Date().toISOString(),
         });
@@ -68,6 +64,10 @@ export function CreateForm() {
         destination_location: destinationLocation || null,
         notes: notes || null,
         is_planned: !startNow,
+        recommended_ice_kg: calc.recommendedIceKg,
+        ice_remaining_kg: calc.recommendedIceKg,
+        melt_rate_kg_per_hr: calc.meltRateKgPerHr,
+        safe_duration_hours: calc.safeDurationHours,
       };
       if (tripId !== null) {
         shipmentInput.trip_id = tripId;

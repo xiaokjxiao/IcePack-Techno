@@ -23,6 +23,7 @@ const MAPPING = {
   'clock.fill': 'schedule',
   'gearshape.fill': 'settings',
   'plus': 'add',
+  'shippingbox.fill': 'inventory',
 } as IconMapping;
 
 /**

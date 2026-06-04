@@ -32,6 +32,8 @@ export default function CreateScreen() {
             paddingRight: padding,
             paddingTop: insets.top + 16,
             paddingBottom: padding,
+            borderBottomLeftRadius: 24,
+            borderBottomRightRadius: 24,
           }}
         >
           <Text

@@ -166,6 +166,10 @@ export interface Shipment {
   destinationLocation: string | null;
   notes: string | null;
   tripId: number | null;
+  recommendedIceKg: number | null;
+  iceRemainingKg: number | null;
+  meltRateKgPerHr: number | null;
+  safeDurationHours: number | null;
   createdAt: string;
 }
 
@@ -174,10 +178,6 @@ export interface TripRow {
   id: number;
   tripName: string;
   status: TripStatus;
-  recommendedIceKg: number;
-  iceRemainingKg: number;
-  meltRateKgPerHr: number;
-  safeDurationHours: number;
   startedAt: string | null;
   completedAt: string | null;
   createdAt: string;

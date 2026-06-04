@@ -61,22 +61,18 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Trips",
+          title: "Home",
           tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol size={iconSize} name="map.fill" color={color} />
+            <IconSymbol size={iconSize} name="house.fill" color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="trips"
         options={{
-          title: "Monitor",
+          title: "Trips",
           tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol
-              size={iconSize}
-              name="gauge.with.dots.needle.33percent"
-              color={color}
-            />
+            <IconSymbol size={iconSize} name="map.fill" color={color} />
           ),
         }}
       />
@@ -90,11 +86,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="history"
+        name="shipments"
         options={{
-          title: "History",
+          title: "Shipments",
           tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol size={iconSize} name="clock.fill" color={color} />
+            <IconSymbol size={iconSize} name="shippingbox.fill" color={color} />
           ),
         }}
       />
@@ -105,12 +101,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color }: { color: string }) => (
             <IconSymbol size={iconSize} name="gearshape.fill" color={color} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="shipments"
-        options={{
-          href: null,
         }}
       />
     </Tabs>

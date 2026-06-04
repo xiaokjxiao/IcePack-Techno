@@ -10,7 +10,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, CheckCircle2, XCircle } from "lucide-react-native";
+import { Play, CheckCircle2, XCircle, Gauge } from "lucide-react-native";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
@@ -251,7 +251,7 @@ export default function ShipmentDetailScreen() {
             Cargo Info
           </Text>
           <View style={{ gap: 10 }}>
-            <Info label="Cargo" value={`${shipment.cargo_kg} kg ${product.icon}`} />
+            <Info label="Cargo" value={`${shipment.cargo_kg} kg`} />
             <Info label="Duration" value={`${shipment.duration_hours} hrs`} />
 
             {shipment.origin_location && (
@@ -301,7 +301,7 @@ export default function ShipmentDetailScreen() {
         </View>
 
         {/* Ice Calculation */}
-        {trip && (
+        {shipment.recommended_ice_kg != null && (
           <View
             style={{
               backgroundColor: "white",
@@ -329,10 +329,10 @@ export default function ShipmentDetailScreen() {
               Ice Calculation
             </Text>
             <View style={{ gap: 10 }}>
-              <Info label="Recommended Ice" value={`${trip.recommended_ice_kg} kg`} strong />
-              <Info label="Melt Rate" value={`${trip.melt_rate_kg_per_hr} kg/hr`} />
-              <Info label="Safe Duration" value={`${trip.safe_duration_hours} hrs`} accent />
-              <Info label="Ice Remaining" value={`${trip.ice_remaining_kg} kg`} />
+              <Info label="Recommended Ice" value={`${shipment.recommended_ice_kg} kg`} strong />
+              <Info label="Melt Rate" value={`${shipment.melt_rate_kg_per_hr} kg/hr`} />
+              <Info label="Safe Duration" value={`${shipment.safe_duration_hours} hrs`} accent />
+              <Info label="Ice Remaining" value={`${shipment.ice_remaining_kg} kg`} />
             </View>
           </View>
         )}
@@ -412,29 +412,49 @@ export default function ShipmentDetailScreen() {
           )}
 
           {trip?.status === "active" && (
-            <TouchableOpacity
-              onPress={() => handleStatusChange("completed")}
-              disabled={actionLoading}
-              activeOpacity={0.85}
-              style={{
-                paddingVertical: 14,
-                borderRadius: 12,
-                backgroundColor: actionLoading ? "#94c5e8" : "#1a8ad4",
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-              }}
-            >
-              {actionLoading ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <CheckCircle2 size={18} color="white" strokeWidth={2} />
-              )}
-              <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
-                {actionLoading ? "Completing..." : "Complete Trip"}
-              </Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                onPress={() => handleStatusChange("completed")}
+                disabled={actionLoading}
+                activeOpacity={0.85}
+                style={{
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  backgroundColor: actionLoading ? "#94c5e8" : "#1a8ad4",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <CheckCircle2 size={18} color="white" strokeWidth={2} />
+                )}
+                <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
+                  {actionLoading ? "Completing..." : "Complete Trip"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push(`/monitor/${shipment.id}` as any)}
+                activeOpacity={0.85}
+                style={{
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  backgroundColor: "#0b2540",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                <Gauge size={18} color="#14b8a6" strokeWidth={2} />
+                <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
+                  Live Monitor
+                </Text>
+              </TouchableOpacity>
+            </>
           )}
 
           {trip && trip.status !== "completed" && trip.status !== "cancelled" && (

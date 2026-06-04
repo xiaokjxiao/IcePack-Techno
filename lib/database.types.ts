@@ -46,10 +46,14 @@ export type Database = {
           created_at: string
           destination_location: string | null
           duration_hours: number
+          ice_remaining_kg: number | null
           id: number
           is_planned: boolean
+          melt_rate_kg_per_hr: number | null
           notes: string | null
           origin_location: string | null
+          recommended_ice_kg: number | null
+          safe_duration_hours: number | null
           shipment_name: string
           target_temp_max_c: number | null
           target_temp_min_c: number | null
@@ -61,10 +65,14 @@ export type Database = {
           created_at?: string
           destination_location?: string | null
           duration_hours: number
+          ice_remaining_kg?: number | null
           id?: number
           is_planned?: boolean
+          melt_rate_kg_per_hr?: number | null
           notes?: string | null
           origin_location?: string | null
+          recommended_ice_kg?: number | null
+          safe_duration_hours?: number | null
           shipment_name: string
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
@@ -76,10 +84,14 @@ export type Database = {
           created_at?: string
           destination_location?: string | null
           duration_hours?: number
+          ice_remaining_kg?: number | null
           id?: number
           is_planned?: boolean
+          melt_rate_kg_per_hr?: number | null
           notes?: string | null
           origin_location?: string | null
+          recommended_ice_kg?: number | null
+          safe_duration_hours?: number | null
           shipment_name?: string
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
@@ -99,11 +111,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
-          ice_remaining_kg: number
           id: number
-          melt_rate_kg_per_hr: number
-          recommended_ice_kg: number
-          safe_duration_hours: number
           started_at: string | null
           status: Database["public"]["Enums"]["trip_status_enum"]
           trip_name: string
@@ -112,11 +120,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
-          ice_remaining_kg: number
           id?: number
-          melt_rate_kg_per_hr: number
-          recommended_ice_kg: number
-          safe_duration_hours: number
           started_at?: string | null
           status?: Database["public"]["Enums"]["trip_status_enum"]
           trip_name?: string
@@ -125,11 +129,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
-          ice_remaining_kg?: number
           id?: number
-          melt_rate_kg_per_hr?: number
-          recommended_ice_kg?: number
-          safe_duration_hours?: number
           started_at?: string | null
           status?: Database["public"]["Enums"]["trip_status_enum"]
           trip_name?: string
