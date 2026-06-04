@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
+  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -10,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { Layers } from "lucide-react-native";
+import { ArrowDownUp, Layers } from "lucide-react-native";
 import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
 import { SearchFilterBar, type FilterOption } from "@/components/ui/SearchFilterBar";
 import { SelectModeBanner } from "@/components/shipments/SelectModeBanner";
@@ -33,6 +35,9 @@ export default function ShipmentsScreen() {
   const [loading, setLoading] = useState(true);
   const [allShipments, setAllShipments] = useState<ShipmentView[]>([]);
   const [filter, setFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"date" | "name">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortOpen, setSortOpen] = useState(false);
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -66,15 +71,21 @@ export default function ShipmentsScreen() {
     [allShipments, filter],
   );
 
-  const filteredShipments = useMemo(
-    () =>
-      searchQuery.trim()
-        ? filteredByStatus.filter((s) =>
-            s.name.toLowerCase().includes(searchQuery.toLowerCase()),
-          )
-        : filteredByStatus,
-    [filteredByStatus, searchQuery],
-  );
+  const filteredShipments = useMemo(() => {
+    let result = searchQuery.trim()
+      ? filteredByStatus.filter((s) =>
+          s.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        )
+      : filteredByStatus;
+
+    result = [...result].sort((a, b) => {
+      const cmp = sortBy === "name"
+        ? a.name.localeCompare(b.name)
+        : a.id - b.id;
+      return sortDir === "desc" ? -cmp : cmp;
+    });
+    return result;
+  }, [filteredByStatus, searchQuery, sortBy, sortDir]);
 
   const plannedShipments = useMemo(
     () => allShipments.filter((s) => s.isPlanned),
@@ -167,19 +178,19 @@ export default function ShipmentsScreen() {
             <Text
               style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}
             >
-              All Shipments
+              Shipments
             </Text>
             <Text
               style={{
                 fontSize: labelSize,
-                color: "rgba(255,255,255,0.6)",
+                color: "rgba(255,255,255,0.5)",
                 marginTop: 4,
               }}
             >
-              {allShipments.length} total —{" "}
-              {allShipments.filter((s) => s.shipmentStatus === "active").length} active,{" "}
-              {plannedShipments.length} planned,{" "}
-              {allShipments.filter((s) => s.shipmentStatus === "completed").length} done
+              {allShipments.length} total ·{" "}
+              {allShipments.filter((s) => s.shipmentStatus === "active").length} active ·{" "}
+              {plannedShipments.length} planned ·{" "}
+              {allShipments.filter((s) => s.shipmentStatus === "completed").length} completed
             </Text>
           </View>
           {!selectMode && (
@@ -258,18 +269,146 @@ export default function ShipmentsScreen() {
           labelSize={labelSize}
         />
       ) : (
-        <View style={{ paddingHorizontal: padding, paddingTop: 12 }}>
-          <SearchFilterBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            searchPlaceholder="Search shipments..."
-            options={filterOptions}
-            filter={filter}
-            onFilterChange={setFilter}
-            labelSize={labelSize}
-          />
+        <View style={{ paddingHorizontal: padding, paddingTop: 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <SearchFilterBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                searchPlaceholder="Search shipments..."
+                options={filterOptions}
+                filter={filter}
+                onFilterChange={setFilter}
+                labelSize={labelSize}
+                hideFilter
+              />
+            </View>
+            <TouchableOpacity
+              onPress={() => setSortOpen(true)}
+              activeOpacity={0.7}
+              style={{
+                padding: 10,
+                borderRadius: 12,
+                backgroundColor: sortOpen || filter !== "all" ? "#dbeafe" : "#f4f8fa",
+                borderWidth: 1,
+                borderColor: sortOpen || filter !== "all" ? "#bfdbfe" : "#e8eef3",
+              }}
+            >
+              <ArrowDownUp size={16} color={sortOpen || filter !== "all" ? "#1a8ad4" : "#587a94"} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
+
+      <Modal visible={sortOpen} transparent animationType="fade" onRequestClose={() => setSortOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.2)", justifyContent: "center", alignItems: "center" }} onPress={() => setSortOpen(false)}>
+          <Pressable
+            style={{
+              backgroundColor: "white",
+              borderRadius: 16,
+              width: 240,
+              paddingVertical: 8,
+              shadowColor: "#0b2540",
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              shadowOffset: { width: 0, height: 8 },
+              elevation: 8,
+            }}
+          >
+            <Text style={{ fontSize: labelSize * 0.75, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
+              Status
+            </Text>
+            {filterOptions.map((opt) => {
+              const isActive = filter === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  onPress={() => setFilter(opt.key)}
+                  activeOpacity={0.6}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: labelSize,
+                      fontWeight: isActive ? "700" : "500",
+                      color: isActive ? "#1a8ad4" : "#0b2540",
+                    }}
+                  >
+                    {opt.label}
+                  </Text>
+                  <View
+                    style={{
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: 8,
+                      backgroundColor: isActive ? "rgba(26,138,212,0.12)" : "rgba(88,122,148,0.08)",
+                      minWidth: 24,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: labelSize * 0.75, fontWeight: "700", color: isActive ? "#1a8ad4" : "#587a94" }}>
+                      {opt.count}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            <View style={{ height: 1, backgroundColor: "#f0f4f8", marginVertical: 8 }} />
+
+            <Text style={{ fontSize: labelSize * 0.75, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, paddingHorizontal: 16, paddingBottom: 4 }}>
+              Sort
+            </Text>
+            {([
+              { key: "date" as const, label: "Newest", altLabel: "Oldest" },
+              { key: "name" as const, label: "A–Z", altLabel: "Z–A" },
+            ]).map(({ key, label, altLabel }) => {
+              const active = sortBy === key;
+              const displayLabel = active ? (sortDir === "asc" ? altLabel : label) : label;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => {
+                    if (active) {
+                      setSortDir((d) => d === "asc" ? "desc" : "asc");
+                    } else {
+                      setSortBy(key);
+                      setSortDir(key === "name" ? "asc" : "desc");
+                    }
+                  }}
+                  activeOpacity={0.6}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: labelSize,
+                      fontWeight: active ? "700" : "500",
+                      color: active ? "#1a8ad4" : "#0b2540",
+                    }}
+                  >
+                    {displayLabel}
+                  </Text>
+                  {active && (
+                    <ArrowDownUp size={14} color="#1a8ad4" strokeWidth={2} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {selectMode && selectedIds.size >= 2 && (
         <TouchableOpacity
@@ -309,19 +448,11 @@ export default function ShipmentsScreen() {
             style={{ marginTop: 32 }}
           />
         ) : filteredShipments.length === 0 ? (
-          <View style={{ alignItems: "center", marginTop: 48, paddingHorizontal: padding }}>
-            <Text
-              style={{
-                fontSize: labelSize,
-                color: "#9bb4c7",
-                textAlign: "center",
-              }}
-            >
-              {searchQuery.trim()
-                ? `No shipments matching "${searchQuery}"`
-                : `No ${filter === "all" ? "" : filter} shipments found`}
-            </Text>
-          </View>
+          <Text style={{ fontSize: labelSize, color: "rgba(0,0,0,0.4)", textAlign: "center", marginTop: 16, paddingHorizontal: padding }}>
+            {searchQuery.trim()
+              ? `No shipments matching "${searchQuery}"`
+              : `No ${filter === "all" ? "" : filter} shipments found`}
+          </Text>
         ) : (
           <View style={{ paddingHorizontal: padding, gap: 12, paddingTop: 8 }}>
             {filteredShipments.map((shipment) => (

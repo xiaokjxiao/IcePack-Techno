@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -10,7 +9,10 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, CheckCircle2, XCircle, ChevronLeft } from "lucide-react-native";
+import { Play, CheckCircle2, XCircle, ChevronLeft, Trash2 } from "lucide-react-native";
+import { EditableField } from "@/components/ui/EditableField";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast, ToastBanner } from "@/components/ui/toast";
 import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
 import {
   useResponsiveFontSize,
@@ -24,6 +26,8 @@ import {
   startTrip,
   completeTrip,
   cancelTrip,
+  deleteTrip,
+  updateTrip,
 } from "@/lib/icepack/services";
 
 type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
@@ -61,6 +65,15 @@ export default function TripDetailScreen() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [allShipments, setAllShipments] = useState<ShipmentRow[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
+  const { toast, show: showToast } = useToast();
+  const [dialog, setDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+    confirmLabel: string;
+    destructive?: boolean;
+  }>({ visible: false, title: "", message: "", onConfirm: () => {}, confirmLabel: "", destructive: false });
 
   useFocusEffect(
     useCallback(() => {
@@ -98,15 +111,21 @@ export default function TripDetailScreen() {
     } catch (e) {
       setTrip(prevTrip);
       setAllShipments(prevShipments);
-      Alert.alert("Error", "Failed to start trip");
+      console.error("Failed to start trip", e);
     } finally {
       setActionLoading(false);
     }
   }, [trip, allShipments, actionLoading]);
 
-  const handleCompleteTrip = useCallback(async () => {
+  const handleSaveName = useCallback(async (newName: string) => {
+    if (!trip) return;
+    await updateTrip(trip.id, { trip_name: newName });
+    setTrip((p) => p ? { ...p, name: newName } : null);
+    showToast({ message: "Trip name updated" });
+  }, [trip, showToast]);
+
+  const executeCompleteTrip = useCallback(async () => {
     if (!trip || actionLoading) return;
-    console.log("[handleCompleteTrip] Starting complete for trip", trip.id, trip.name);
     setActionLoading(true);
     const prevTrip = trip;
     const prevShipments = allShipments;
@@ -114,20 +133,16 @@ export default function TripDetailScreen() {
     setAllShipments((prev) => prev.map((s) => ({ ...s, status: "completed" as const })));
     try {
       await completeTrip(trip.id);
-      console.log("[handleCompleteTrip] Success - trip", trip.id, "marked completed");
     } catch (e) {
-      console.error("[handleCompleteTrip] Failed for trip", trip.id, e);
       setTrip(prevTrip);
       setAllShipments(prevShipments);
-      Alert.alert("Error", "Failed to complete trip");
     } finally {
       setActionLoading(false);
     }
   }, [trip, allShipments, actionLoading]);
 
-  const handleCancelTrip = useCallback(async () => {
+  const executeCancelTrip = useCallback(async () => {
     if (!trip || actionLoading) return;
-    console.log("[handleCancelTrip] Starting cancel for trip", trip.id, trip.name);
     setActionLoading(true);
     const prevTrip = trip;
     const prevShipments = allShipments;
@@ -135,16 +150,72 @@ export default function TripDetailScreen() {
     setAllShipments((prev) => prev.map((s) => ({ ...s, status: "cancelled" as const })));
     try {
       await cancelTrip(trip.id);
-      console.log("[handleCancelTrip] Success - trip", trip.id, "cancelled");
     } catch (e) {
-      console.error("[handleCancelTrip] Failed for trip", trip.id, e);
       setTrip(prevTrip);
       setAllShipments(prevShipments);
-      Alert.alert("Error", "Failed to cancel trip");
     } finally {
       setActionLoading(false);
     }
   }, [trip, allShipments, actionLoading]);
+
+  const executeDeleteTrip = useCallback(async () => {
+    if (!trip || actionLoading) return;
+    console.log("[TripDetail] Deleting trip", trip.id, trip.name);
+    try {
+      await deleteTrip(trip.id);
+      console.log("[TripDetail] Deleted trip", trip.id);
+      showToast({ message: "Trip deleted" });
+      setTimeout(() => router.back(), 400);
+    } catch (e) {
+      console.error("[TripDetail] Failed to delete trip", trip.id, e);
+      showToast({ message: "Failed to delete trip", variant: "error" });
+    }
+  }, [trip, actionLoading, showToast]);
+
+  const promptDelete = useCallback(() => {
+    if (!trip) return;
+    setDialog({
+      visible: true,
+      title: "Delete Trip",
+      message: `Delete "${trip.name}" and all its shipments? This cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: async () => {
+        setDialog((d) => ({ ...d, visible: false }));
+        await executeDeleteTrip();
+      },
+    });
+  }, [trip, executeDeleteTrip]);
+
+  const promptComplete = useCallback(() => {
+    if (!trip) return;
+    setDialog({
+      visible: true,
+      title: "Complete Trip",
+      message: `Mark "${trip.name}" as completed? All shipments will also be marked delivered.`,
+      confirmLabel: "Complete",
+      destructive: false,
+      onConfirm: async () => {
+        setDialog((d) => ({ ...d, visible: false }));
+        await executeCompleteTrip();
+      },
+    });
+  }, [trip, executeCompleteTrip]);
+
+  const promptCancel = useCallback(() => {
+    if (!trip) return;
+    setDialog({
+      visible: true,
+      title: "Cancel Trip",
+      message: `Cancel "${trip.name}"? All shipments in this trip will be cancelled.`,
+      confirmLabel: "Cancel",
+      destructive: true,
+      onConfirm: async () => {
+        setDialog((d) => ({ ...d, visible: false }));
+        await executeCancelTrip();
+      },
+    });
+  }, [trip, executeCancelTrip]);
 
   if (loading) {
     return (
@@ -171,8 +242,9 @@ export default function TripDetailScreen() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-white"
+    <>
+      <ScrollView
+        className="flex-1 bg-white"
       contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
     >
       <LinearGradient
@@ -186,25 +258,36 @@ export default function TripDetailScreen() {
           paddingTop: insets.top + 16,
         }}
       >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <ChevronLeft size={labelSize + 4} color="rgba(255,255,255,0.7)" strokeWidth={2} />
-          <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>
-            Back
-          </Text>
-        </TouchableOpacity>
-        <Text
-          style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}
-        >
-          {trip.name}
-        </Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
+            <ChevronLeft size={labelSize + 4} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+            <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>
+              Back
+            </Text>
+          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 16 }}>
+            <TouchableOpacity
+              onPress={promptDelete}
+              activeOpacity={0.7}
+              style={{ padding: 4 }}
+            >
+              <Trash2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <EditableField
+          value={trip.name}
+          onSave={handleSaveName}
+          fontSize={titleSize}
+        />
         {allShipments.length > 1 && (
           <View
             style={{
@@ -279,7 +362,7 @@ export default function TripDetailScreen() {
           {trip.status === "active" && (
             <>
               <TouchableOpacity
-                onPress={handleCompleteTrip}
+                onPress={promptComplete}
                 disabled={actionLoading}
                 activeOpacity={0.85}
                 style={{
@@ -307,7 +390,7 @@ export default function TripDetailScreen() {
 
           {trip.status !== "completed" && trip.status !== "cancelled" && (
             <TouchableOpacity
-              onPress={handleCancelTrip}
+              onPress={promptCancel}
               disabled={actionLoading}
               activeOpacity={0.85}
               style={{
@@ -365,5 +448,19 @@ export default function TripDetailScreen() {
         </View>
       </View>
     </ScrollView>
+
+      <ConfirmDialog
+      visible={dialog.visible}
+      title={dialog.title}
+      message={dialog.message}
+      actions={[
+        { label: dialog.confirmLabel, onPress: dialog.onConfirm, variant: dialog.destructive ? "destructive" : "default" },
+        { label: "Go Back", onPress: () => {}, variant: "cancel" },
+      ]}
+      onClose={() => setDialog((d) => ({ ...d, visible: false }))}
+    />
+
+      <ToastBanner toast={toast} />
+    </>
   );
 }

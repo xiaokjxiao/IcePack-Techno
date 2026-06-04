@@ -7,52 +7,73 @@ import {
   liveStateFor,
 } from "@/lib/icepack/data";
 import { ProductIcon } from "@/components/ui/ProductIcon";
-import { Link } from "expo-router";
+import { router } from "expo-router";
 import { Check, Package } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
 
 type RiskLevel = "safe" | "warning" | "critical";
 
-const RAIL_COLORS: Record<string, string> = {
-  active: "bg-[#14b8a6]",
-  completed: "bg-[#22c55e]",
-  cancelled: "bg-[#ef4444]",
-  planned: "bg-[#06b6d4]",
-  safe: "bg-[#14b8a6]",
-  warning: "bg-[#f59e0b]",
-  critical: "bg-[#ef4444]",
+const STATUS_BG_COLORS: Record<string, string> = {
+  active: "#d1faf5",
+  completed: "#dcfce7",
+  cancelled: "#fee2e2",
+  planned: "#cffafe",
+  safe: "#d1faf5",
+  warning: "#fef3c7",
+  critical: "#fee2e2",
 };
 
-const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
-  active: { bg: "bg-[#14b8a6]/15", text: "text-[#14b8a6]", label: "Active" },
-  completed: { bg: "bg-[#22c55e]/15", text: "text-[#22c55e]", label: "Delivered" },
-  cancelled: { bg: "bg-[#ef4444]/15", text: "text-[#ef4444]", label: "Cancelled" },
-  planned: { bg: "bg-[#06b6d4]/15", text: "text-[#06b6d4]", label: "Planned" },
+const STATUS_TEXT_COLORS: Record<string, string> = {
+  active: "#14b8a6",
+  completed: "#22c55e",
+  cancelled: "#ef4444",
+  planned: "#06b6d4",
+  safe: "#14b8a6",
+  warning: "#f59e0b",
+  critical: "#ef4444",
 };
 
-const RISK_CONFIG: Record<RiskLevel, { bg: string; text: string; label: string }> = {
-  safe: { bg: "bg-[#14b8a6]/15", text: "text-[#14b8a6]", label: "Safe" },
-  warning: { bg: "bg-[#f59e0b]/15", text: "text-[#f59e0b]", label: "Warning" },
-  critical: { bg: "bg-[#ef4444]/15", text: "text-[#ef4444]", label: "Critical" },
+const STATUS_CONFIG: Record<string, { label: string }> = {
+  active: { label: "Active" },
+  completed: { label: "Delivered" },
+  cancelled: { label: "Cancelled" },
+  planned: { label: "Planned" },
+};
+
+const RISK_CONFIG: Record<RiskLevel, { label: string }> = {
+  safe: { label: "Safe" },
+  warning: { label: "Warning" },
+  critical: { label: "Critical" },
 };
 
 function StatusBadge({ status, risk }: { status: string; risk?: RiskLevel }) {
-  const fsXs = useResponsiveFontSize("xs") * 1.1;
+  const fsXs = useResponsiveFontSize("xs");
+  let displayStatus = status;
+  let bgColor = STATUS_BG_COLORS[status] ?? "#cffafe";
+  let textColor = STATUS_TEXT_COLORS[status] ?? "#06b6d4";
+
   if (status === "active" && risk) {
-    const c = RISK_CONFIG[risk];
-    return (
-      <View className={`px-2 py-0.5 rounded-full ${c.bg}`}>
-        <Text className={`font-semibold uppercase tracking-wide ${c.text}`} style={{ fontSize: fsXs }}>
-          {c.label}
-        </Text>
-      </View>
-    );
+    displayStatus = risk;
+    bgColor = STATUS_BG_COLORS[risk] ?? "#cffafe";
+    textColor = STATUS_TEXT_COLORS[risk] ?? "#06b6d4";
   }
-  const c = STATUS_CONFIG[status] ?? STATUS_CONFIG.planned;
+
+  const label = (displayStatus === "active" && risk) 
+    ? RISK_CONFIG[risk as RiskLevel]?.label 
+    : STATUS_CONFIG[displayStatus]?.label;
+
   return (
-    <View className={`px-2 py-0.5 rounded-full ${c.bg}`}>
-      <Text className={`font-semibold uppercase tracking-wide ${c.text}`} style={{ fontSize: fsXs }}>
-        {c.label}
+    <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: bgColor }}>
+      <Text 
+        style={{ 
+          fontSize: fsXs, 
+          fontWeight: "600", 
+          color: textColor, 
+          textTransform: "uppercase",
+          letterSpacing: 0.5
+        }}
+      >
+        {label}
       </Text>
     </View>
   );
@@ -68,29 +89,54 @@ function Cell({
   accent?: "ok" | "warning" | "critical" | "muted";
 }) {
   const { isTablet } = useScreenDimensions();
-  const fsXs = useResponsiveFontSize("xs") * 1.1;
-  const fsSm = useResponsiveFontSize("sm") * 1.1;
+  const fsXs = useResponsiveFontSize("xs");
+  const fsSm = useResponsiveFontSize("sm");
+  
   const valueColor =
     accent === "critical"
-      ? "text-[#ef4444]"
+      ? "#ef4444"
       : accent === "warning"
-        ? "text-[#f59e0b]"
+        ? "#f59e0b"
         : accent === "ok"
-          ? "text-[#14b8a6]"
+          ? "#14b8a6"
           : accent === "muted"
-            ? "text-[#94a3b8]"
-            : "text-[#0b2540]";
+            ? "#94a3b8"
+            : "#0f1419";
 
   return (
-    <View className="flex-1">
-      <Text className={"text-muted-foreground uppercase tracking-wider"} style={{ fontSize: fsXs }}>
+    <View style={{ flex: 1 }}>
+      <Text 
+        style={{ 
+          fontSize: fsXs, 
+          color: "#94a3b8", 
+          fontWeight: "600", 
+          marginBottom: 2,
+          textTransform: "uppercase",
+          letterSpacing: 0.5
+        }}
+      >
         {label}
       </Text>
-      <Text className={"font-semibold " + valueColor} style={{ fontSize: isTablet ? fsSm * 1.1 : fsSm }}>
+      <Text 
+        style={{ 
+          fontSize: isTablet ? fsSm * 1.1 : fsSm, 
+          fontWeight: "700", 
+          color: valueColor 
+        }}
+      >
         {value}
       </Text>
     </View>
   );
+}
+
+function formatDateTime(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${date} · ${time}`;
 }
 
 export function TripCard({
@@ -107,124 +153,182 @@ export function TripCard({
   shipmentCount?: number;
 }) {
   const { isTablet } = useScreenDimensions();
-  const fsBase = useResponsiveFontSize("base") * 1.1;
-  const fsXs = useResponsiveFontSize("xs") * 1.1;
+  const fsBase = useResponsiveFontSize("base");
+  const fsXs = useResponsiveFontSize("xs");
+  const fsSm = useResponsiveFontSize("sm");
   const product = getProduct(trip.productId);
   const live = liveStateFor(trip);
   const isActive = trip.status === "active";
   const isPlanned = trip.status === "planned";
 
-  const railColor = isActive && live
-    ? RAIL_COLORS[live.risk]
-    : RAIL_COLORS[trip.status] ?? RAIL_COLORS.planned;
-
-  const baseClass = `relative overflow-hidden ${selected ? "border-2 border-sea-600" : "border border-black/5"} rounded-2xl`;
-
   const count = shipmentCount ?? 1;
+  const startedText = formatDateTime(trip.startedAt);
 
-  const inner = (
-    <>
-      <View className={`absolute left-0 top-0 bottom-0 w-1 z-10 ${railColor}`} />
-      <View className="rounded-2xl bg-white" style={{ overflow: "hidden" }}>
-        <View
-          className={`${isTablet ? "p-5" : "p-4"}`}
-          style={{
-            shadowColor: "#0b2540",
-            shadowOpacity: 0.06,
-            shadowRadius: 20,
-            shadowOffset: { width: 0, height: 8 },
-            elevation: 3,
-            backgroundColor: "white",
-          }}
-        >
-          {selectable && (
-            <View
-              className={`absolute top-3 right-3 size-6 rounded-full items-center justify-center ${
-                selected ? "bg-sea-600" : "border-2 border-sea-300"
-              }`}
+  const borderStyle = selected
+    ? { borderWidth: 2, borderColor: "#1a8ad4" }
+    : { borderWidth: 1, borderColor: "#f0f4f8" };
+
+  const headerRow = (
+    <View style={{ marginBottom: 8 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+        <View style={{ flex: 1, marginRight: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+            <ProductIcon name={product.icon} size={fsBase} />
+            <Text 
+              numberOfLines={1} 
+              style={{ 
+                fontSize: fsBase, 
+                fontWeight: "600", 
+                color: "#0f1419",
+                flex: 1
+              }}
             >
-              {selected && <Check size={14} color="white" strokeWidth={3} />}
-            </View>
-          )}
-          <View className="flex-row justify-between items-start mb-3">
-            <View className="shrink mr-2">
-              <View className="flex-row items-center gap-2">
-                <ProductIcon name={product.icon} size={fsBase} />
-                <Text className="text-sea-950 font-semibold text-base shrink" numberOfLines={1} style={{ fontSize: fsBase }}>
-                  {trip.name}
+              {trip.name}
+            </Text>
+          </View>
+          
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <Text style={{ fontSize: fsXs, color: "#64748b" }}>
+              {product.label}
+            </Text>
+            {count > 1 && (
+              <View 
+                style={{ 
+                  flexDirection: "row", 
+                  alignItems: "center", 
+                  gap: 4, 
+                  paddingHorizontal: 8, 
+                  paddingVertical: 4, 
+                  borderRadius: 6, 
+                  backgroundColor: "#dbeafe",
+                  borderWidth: 0.5,
+                  borderColor: "#bfdbfe"
+                }}
+              >
+                <Package size={10} color="#0284c7" />
+                <Text style={{ fontWeight: "600", color: "#0284c7", fontSize: fsXs }}>
+                  {count}
                 </Text>
               </View>
-              <View className="flex-row items-center gap-2 mt-0.5 flex-wrap">
-                <Text className="text-muted-foreground" style={{ fontSize: fsXs }}>
-                  {product.label}
-                </Text>
-                {count > 1 && (
-                  <View className="flex-row items-center gap-1 px-1.5 py-0.5 rounded-full bg-sea-100 border border-sea-200">
-                    <Package size={10} color="#0369a1" />
-                    <Text className="font-semibold text-sea-700" style={{ fontSize: fsXs }}>
-                      {count}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-            {!selectable && (
-              <StatusBadge status={trip.status} risk={isActive ? live.risk : undefined} />
             )}
           </View>
 
-          <View className="flex-row gap-2 border-t border-border pt-3">
-            <Cell
-              label="Duration"
-              value={isActive ? formatHours(live.elapsedHours) : `${trip.durationHours}h`}
-            />
-            <Cell
-              label="Status"
-              value={
-                isActive
-                  ? `${live.pctRemaining}%`
-                  : isPlanned
-                    ? "Planned"
-                    : trip.status === "completed"
-                      ? "Delivered"
-                      : trip.status === "cancelled"
-                        ? "Cancelled"
-                        : "--"
-              }
-              accent={
-                isActive && live.risk === "critical"
-                  ? "critical"
-                  : isActive && live.risk === "warning"
-                    ? "warning"
-                    : isActive
-                      ? "ok"
-                      : trip.status === "cancelled"
-                        ? "critical"
-                        : trip.status === "completed"
-                          ? "muted"
-                          : undefined
-              }
-            />
-          </View>
-
+          {startedText && (
+            <Text 
+              style={{ 
+                fontSize: fsXs * 0.9, 
+                color: "#64748b", 
+                marginTop: 4
+              }}
+            >
+              Departed: {startedText}
+            </Text>
+          )}
         </View>
+
+        <StatusBadge status={trip.status} risk={isActive ? live.risk : undefined} />
       </View>
-    </>
+    </View>
+  );
+
+  const cellsRow = (
+    <View style={{ flexDirection: "row", gap: 12, borderTopWidth: 1, borderTopColor: "#f0f4f8", paddingTop: 8 }}>
+      <Cell
+        label="Duration"
+        value={isActive ? formatHours(live.elapsedHours) : `${trip.durationHours}h`}
+      />
+      <Cell
+        label="Status"
+        value={
+          isActive
+            ? `${live.pctRemaining}%`
+            : isPlanned
+              ? "Planned"
+              : trip.status === "completed"
+                ? "Delivered"
+                : trip.status === "cancelled"
+                  ? "Cancelled"
+                  : "--"
+        }
+        accent={
+          isActive && live.risk === "critical"
+            ? "critical"
+            : isActive && live.risk === "warning"
+              ? "warning"
+              : isActive
+                ? "ok"
+                : trip.status === "cancelled"
+                  ? "critical"
+                  : trip.status === "completed"
+                    ? "muted"
+                    : undefined
+        }
+      />
+    </View>
+  );
+
+  const cardContent = (
+    <View style={{ paddingVertical: isTablet ? 18 : 14, paddingHorizontal: isTablet ? 16 : 12 }}>
+      {headerRow}
+      {cellsRow}
+    </View>
   );
 
   if (selectable) {
     return (
-      <TouchableOpacity activeOpacity={0.85} onPress={() => onToggleSelect?.(trip.id)} className={baseClass}>
-        {inner}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => onToggleSelect?.(trip.id)}
+        style={{
+          backgroundColor: "white",
+          borderRadius: 12,
+          overflow: "hidden",
+          shadowColor: "#0b2540",
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 1,
+          ...borderStyle,
+        }}
+      >
+        <View style={{ position: "absolute", top: 12, right: 12, zIndex: 10 }}>
+          <View
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: selected ? "#1a8ad4" : "transparent",
+              borderWidth: 2,
+              borderColor: selected ? "#1a8ad4" : "#cbd5e1",
+            }}
+          >
+            {selected && <Check size={14} color="white" strokeWidth={3} />}
+          </View>
+        </View>
+        {cardContent}
       </TouchableOpacity>
     );
   }
 
   return (
-    <Link href={`/trips/${trip.id}` as any} asChild>
-      <TouchableOpacity activeOpacity={0.85} className={baseClass}>
-        {inner}
-      </TouchableOpacity>
-    </Link>
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => router.push(`/trips/${trip.id}` as any)}
+      style={{
+        backgroundColor: "white",
+        borderRadius: 12,
+        overflow: "hidden",
+        shadowColor: "#0b2540",
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 1,
+        ...borderStyle,
+      }}
+    >
+      {cardContent}
+    </TouchableOpacity>
   );
 }

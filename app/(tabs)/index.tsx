@@ -6,8 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatCard } from "@/components/trips/StatCard";
 import { TripCard } from "@/components/trips/TripCard";
-import { TripHeader } from "@/app/(tabs)/trips";
-import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
+import { type ShipmentView } from "@/components/shipments/ShipmentCard";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
@@ -57,7 +56,6 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shipments, setShipments] = useState<ShipmentView[]>([]);
-  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   useFocusEffect(
     useCallback(() => {
@@ -76,27 +74,35 @@ export default function HomeScreen() {
     }, []),
   );
 
-  const toggleExpand = useCallback((id: number) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  const tripCounts = useMemo(() => {
+    let active = 0, completed = 0, planned = 0, critical = 0;
+    const tripGroups = new Map<string, ShipmentView[]>();
+    for (const s of shipments) {
+      const key = s.tripId != null ? `trip-${s.tripId}` : `solo-${s.id}`;
+      const arr = tripGroups.get(key) || [];
+      arr.push(s);
+      tripGroups.set(key, arr);
+    }
+    for (const [, group] of tripGroups) {
+      const first = group[0];
+      const status = first.tripStatus ?? first.shipmentStatus;
+      if (status === "active") {
+        active++;
+        if (group.some(isShipmentCritical)) critical++;
+      } else if (status === "completed" || status === "cancelled") completed++;
+      else if (status === "planned") planned++;
+    }
+    return { active, critical, completed, planned };
+  }, [shipments]);
+
+  const statCards: { label: string; value: string; accent?: boolean }[] = [
+    { label: "Active", value: String(tripCounts.active).padStart(2, "0") },
+    { label: "Critical", value: String(tripCounts.critical).padStart(2, "0"), accent: tripCounts.critical > 0 },
+    { label: "Completed", value: String(tripCounts.completed).padStart(2, "0") },
+    { label: "Planned", value: String(tripCounts.planned).padStart(2, "0") },
+  ];
 
   const activeShipments = shipments.filter((s) => s.shipmentStatus === "active");
-  const completedShipments = shipments.filter((s) => s.shipmentStatus === "completed");
-  const plannedShipments = shipments.filter((s) => s.isPlanned);
-
-  const criticalShipments = activeShipments.filter(isShipmentCritical);
-
-  const stats = {
-    active: activeShipments.length,
-    critical: criticalShipments.length,
-    completed: completedShipments.length,
-    planned: plannedShipments.length,
-  };
 
   const recentActive = activeShipments.slice(0, 5);
 
@@ -122,13 +128,6 @@ export default function HomeScreen() {
     }
     return { groups: multi, solo };
   }, [recentActive]);
-
-  const statCards: { label: string; value: string; accent?: boolean }[] = [
-    { label: "Active", value: String(stats.active).padStart(2, "0") },
-    { label: "Critical", value: String(stats.critical).padStart(2, "0"), accent: stats.critical > 0 },
-    { label: "Completed", value: String(stats.completed).padStart(2, "0") },
-    { label: "Planned", value: String(stats.planned).padStart(2, "0") },
-  ];
 
   const isFourCol = isLandscape && !isTablet;
   const avatarSize = isTablet ? 48 : 40;
@@ -316,23 +315,12 @@ export default function HomeScreen() {
               <View style={{ gap: 12, marginBottom: 24 }}>
                 {activeGrouped.groups.map(([tripId, groupShipments]) => {
                   const trip = toTrip(groupShipments[0]);
-                  const expanded = expandedIds.has(tripId);
                   return (
-                    <View key={`group-${tripId}`}>
-                      <TripHeader
-                        trip={trip}
-                        shipments={groupShipments}
-                        isExpanded={expanded}
-                        onToggle={() => toggleExpand(tripId)}
-                      />
-                      {expanded && (
-                        <View style={{ paddingLeft: 20, paddingTop: 8, gap: 8 }}>
-                          {groupShipments.map((s) => (
-                            <ShipmentCard key={s.id} shipment={s} />
-                          ))}
-                        </View>
-                      )}
-                    </View>
+                    <TripCard
+                      key={`group-${tripId}`}
+                      trip={trip}
+                      shipmentCount={groupShipments.length}
+                    />
                   );
                 })}
                 {activeGrouped.solo.map((s) => (

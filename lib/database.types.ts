@@ -12,93 +12,98 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       shipments: {
         Row: {
+          schedule: string | null
+          units_pallets: number | null
+          batch_number: string | null
           cargo_category: Database["public"]["Enums"]["cargo_category_enum"]
           cargo_kg: number
           created_at: string
           destination_location: string | null
           duration_hours: number
+          hs_code: string | null
           ice_remaining_kg: number | null
           id: number
-          is_planned: boolean
+          is_planned: boolean | null
           melt_rate_kg_per_hr: number | null
           notes: string | null
           origin_location: string | null
+          pallets: number | null
           recommended_ice_kg: number | null
           safe_duration_hours: number | null
+          scheduled_delivery_at: string | null
+          scheduled_pickup_at: string | null
           shipment_name: string
           status: Database["public"]["Enums"]["trip_status_enum"]
+          supplier_country: string | null
+          supplier_name: string | null
           target_temp_max_c: number | null
           target_temp_min_c: number | null
           trip_id: number | null
+          units: number | null
         }
         Insert: {
+          batch_number?: string | null
           cargo_category: Database["public"]["Enums"]["cargo_category_enum"]
           cargo_kg: number
           created_at?: string
           destination_location?: string | null
           duration_hours: number
+          hs_code?: string | null
           ice_remaining_kg?: number | null
           id?: number
-          is_planned?: boolean
+          is_planned?: boolean | null
           melt_rate_kg_per_hr?: number | null
           notes?: string | null
           origin_location?: string | null
+          pallets?: number | null
           recommended_ice_kg?: number | null
           safe_duration_hours?: number | null
+          schedule?: string | null
+          scheduled_delivery_at?: string | null
+          scheduled_pickup_at?: string | null
           shipment_name: string
           status?: Database["public"]["Enums"]["trip_status_enum"]
+          supplier_country?: string | null
+          supplier_name?: string | null
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
           trip_id?: number | null
+          units?: number | null
+          units_pallets?: number | null
         }
         Update: {
+          batch_number?: string | null
           cargo_category?: Database["public"]["Enums"]["cargo_category_enum"]
           cargo_kg?: number
           created_at?: string
           destination_location?: string | null
           duration_hours?: number
+          hs_code?: string | null
           ice_remaining_kg?: number | null
           id?: number
-          is_planned?: boolean
+          is_planned?: boolean | null
           melt_rate_kg_per_hr?: number | null
           notes?: string | null
           origin_location?: string | null
+          pallets?: number | null
           recommended_ice_kg?: number | null
           safe_duration_hours?: number | null
+          schedule?: string | null
+          scheduled_delivery_at?: string | null
+          scheduled_pickup_at?: string | null
           shipment_name?: string
           status?: Database["public"]["Enums"]["trip_status_enum"]
+          supplier_country?: string | null
+          supplier_name?: string | null
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
           trip_id?: number | null
+          units?: number | null
+          units_pallets?: number | null
         }
         Relationships: [
           {
@@ -284,9 +289,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       cargo_category_enum: [

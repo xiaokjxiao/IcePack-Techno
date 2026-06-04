@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -10,7 +9,10 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft } from "lucide-react-native";
+import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft, Trash2 } from "lucide-react-native";
+import { EditableField } from "@/components/ui/EditableField";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast, ToastBanner } from "@/components/ui/toast";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
@@ -26,8 +28,10 @@ import { ProductIcon } from "@/components/ui/ProductIcon";
 import {
   getShipment,
   getTrip,
+  updateShipment,
   updateShipmentStatus,
   startSoloShipment,
+  deleteShipment,
 } from "@/lib/icepack/services";
 
 type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
@@ -80,6 +84,15 @@ export default function ShipmentDetailScreen() {
   const [shipment, setShipment] = useState<ShipmentRow | null>(null);
   const [trip, setTrip] = useState<TripRow | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const { toast, show: showToast } = useToast();
+  const [dialog, setDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+    confirmLabel: string;
+    destructive?: boolean;
+  }>({ visible: false, title: "", message: "", onConfirm: () => {}, confirmLabel: "", destructive: false });
 
   useFocusEffect(
     useCallback(() => {
@@ -116,13 +129,79 @@ export default function ShipmentDetailScreen() {
           setShipment((prev) => prev ? { ...prev, status: newStatus } : null);
         }
       } catch (e) {
-        Alert.alert("Error", "Failed to update status");
+        console.error("Failed to update status", e);
       } finally {
         setActionLoading(false);
       }
     },
     [shipment],
   );
+
+  const handleSaveName = useCallback(async (newName: string) => {
+    if (!shipment) return;
+    await updateShipment(shipment.id, { shipment_name: newName });
+    setShipment((p) => p ? { ...p, shipment_name: newName } : null);
+    showToast({ message: "Shipment name updated" });
+  }, [shipment, showToast]);
+
+  const executeDeleteShipment = useCallback(async () => {
+    if (!shipment) return;
+    console.log("[ShipmentDetail] Deleting shipment", shipment.id, shipment.shipment_name);
+    try {
+      await deleteShipment(shipment.id);
+      console.log("[ShipmentDetail] Deleted shipment", shipment.id);
+      showToast({ message: "Shipment deleted" });
+      setTimeout(() => router.back(), 400);
+    } catch (e) {
+      console.error("[ShipmentDetail] Failed to delete shipment", shipment.id, e);
+      showToast({ message: "Failed to delete shipment", variant: "error" });
+    }
+  }, [shipment, showToast]);
+
+  const promptDelete = useCallback(() => {
+    if (!shipment) return;
+    setDialog({
+      visible: true,
+      title: "Delete Shipment",
+      message: `Delete "${shipment.shipment_name}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: async () => {
+        setDialog((d) => ({ ...d, visible: false }));
+        await executeDeleteShipment();
+      },
+    });
+  }, [shipment, executeDeleteShipment]);
+
+  const promptComplete = useCallback(() => {
+    if (!shipment) return;
+    setDialog({
+      visible: true,
+      title: "Complete Shipment",
+      message: `Mark "${shipment.shipment_name}" as delivered?`,
+      confirmLabel: "Complete",
+      destructive: false,
+      onConfirm: async () => {
+        setDialog((d) => ({ ...d, visible: false }));
+        await handleStatusChange("completed");
+      },
+    });
+  }, [shipment, handleStatusChange]);
+
+  const promptCancel = useCallback(() => {
+    if (!shipment) return;
+    setDialog({
+      visible: true,
+      title: "Cancel Shipment",
+      message: `Cancel "${shipment.shipment_name}"?`,
+      confirmLabel: "Cancel",
+      destructive: true,
+      onConfirm: async () => {
+        setDialog((d) => ({ ...d, visible: false }));
+        await handleStatusChange("cancelled");
+      },
+    });
+  }, [shipment, handleStatusChange]);
 
   if (loading) {
     return (
@@ -152,11 +231,12 @@ export default function ShipmentDetailScreen() {
   const profile = getProfileFor(shipment.cargo_category);
 
   return (
-    <ScrollView
-      className="flex-1 bg-white"
-      contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    <>
+      <ScrollView
+        className="flex-1 bg-white"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
       <LinearGradient
         colors={["#173E61", "#246EA2"]}
         start={{ x: 0, y: 0 }}
@@ -168,23 +248,36 @@ export default function ShipmentDetailScreen() {
           paddingTop: insets.top + 16,
         }}
       >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-          style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
-        >
-          <ChevronLeft size={labelSize + 4} color="rgba(255,255,255,0.7)" strokeWidth={2} />
-          <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>
-            Back
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
+          >
+            <ChevronLeft size={labelSize + 4} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+            <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>
+              Back
+            </Text>
+          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 16 }}>
+            <TouchableOpacity
+              onPress={promptDelete}
+              activeOpacity={0.7}
+              style={{ padding: 4 }}
+            >
+              <Trash2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <ProductIcon name={product.icon} size={titleSize} color="white" />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }} numberOfLines={1}>
-              {shipment.shipment_name}
-            </Text>
+            <EditableField
+              value={shipment.shipment_name}
+              onSave={handleSaveName}
+              fontSize={titleSize}
+            />
             <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>
               {product.label}
             </Text>
@@ -272,6 +365,58 @@ export default function ShipmentDetailScreen() {
             )}
           </View>
         </View>
+
+        {/* Customs & Logistics */}
+        {(shipment.hs_code || shipment.supplier_name || shipment.schedule || shipment.units_pallets) && (
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 16,
+              padding: isTablet ? 20 : 16,
+              borderWidth: 1,
+              borderColor: "#e8eef3",
+              shadowColor: "#0b2540",
+              shadowOpacity: 0.04,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 2,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: labelSize * 0.9,
+                fontWeight: "600",
+                color: "#587a94",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              Customs & Logistics
+            </Text>
+            <View style={{ gap: 10 }}>
+              {shipment.hs_code && (
+                <Info label="HS Code" value={shipment.hs_code} />
+              )}
+              {shipment.supplier_name && (
+                <Info label="Supplier" value={shipment.supplier_name} />
+              )}
+              {shipment.schedule && (
+                <Info
+                  label="Schedule"
+                  value={new Date(shipment.schedule).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                />
+              )}
+              {shipment.units_pallets != null && (
+                <Info label="Units / Pallets" value={String(shipment.units_pallets)} />
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Storage Profile */}
         <View
@@ -424,7 +569,7 @@ export default function ShipmentDetailScreen() {
           {shipment.status === "active" && (
             <>
               <TouchableOpacity
-                onPress={() => handleStatusChange("completed")}
+                onPress={promptComplete}
                 disabled={actionLoading}
                 activeOpacity={0.85}
                 style={{
@@ -469,7 +614,7 @@ export default function ShipmentDetailScreen() {
 
           {shipment.status !== "completed" && shipment.status !== "cancelled" && (
             <TouchableOpacity
-              onPress={() => handleStatusChange("cancelled")}
+              onPress={promptCancel}
               disabled={actionLoading}
               activeOpacity={0.85}
               style={{
@@ -527,5 +672,19 @@ export default function ShipmentDetailScreen() {
         </View>
       </View>
     </ScrollView>
+
+    <ConfirmDialog
+      visible={dialog.visible}
+      title={dialog.title}
+      message={dialog.message}
+      actions={[
+        { label: dialog.confirmLabel, onPress: dialog.onConfirm, variant: dialog.destructive ? "destructive" : "default" },
+        { label: "Go Back", onPress: () => {}, variant: "cancel" },
+      ]}
+      onClose={() => setDialog((d) => ({ ...d, visible: false }))}
+    />
+
+      <ToastBanner toast={toast} />
+    </>
   );
 }
