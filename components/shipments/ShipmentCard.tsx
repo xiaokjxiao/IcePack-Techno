@@ -155,9 +155,6 @@ export function ShipmentCard({
 
   const live = trip ? liveStateFor(trip) : null;
   const isActive = shipment.shipmentStatus === "active";
-  const isPlanned =
-    shipment.shipmentStatus === "planned" || shipment.isPlanned;
-
   const railColor = isActive && live
     ? RAIL_COLORS[live.risk]
     : RAIL_COLORS[shipment.shipmentStatus] ?? "bg-muted";
@@ -248,7 +245,7 @@ export function ShipmentCard({
                     : shipment.shipmentStatus === "planned" || shipment.isPlanned
                       ? "Ready"
                       : shipment.shipmentStatus === "completed"
-                        ? "Done"
+                        ? "Delivered"
                         : "--"
               }
               accent={

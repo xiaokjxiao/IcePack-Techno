@@ -79,14 +79,33 @@ export async function updateShipmentStatus(id: number, status: TripStatus) {
       .select("status")
       .eq("trip_id", shipment.trip_id);
 
-    if (siblings && siblings.length > 0 && siblings.every((s) => s.status === status)) {
+    if (siblings && siblings.length > 0) {
+      const allFinished = siblings.every(
+        (s) => s.status === "completed" || s.status === "cancelled",
+      );
+      const anyActive = siblings.some((s) => s.status === "active");
+
+      let derivedStatus: TripStatus;
+      if (allFinished) derivedStatus = "completed";
+      else if (anyActive) derivedStatus = "active";
+      else derivedStatus = "planned";
+
+      const { data: currentTrip } = await supabase
+        .from("trips")
+        .select("status, started_at")
+        .eq("id", shipment.trip_id)
+        .single();
+
       const now = new Date().toISOString();
-      const patch: Record<string, unknown> = { status, updated_at: now };
-      if (status === "completed" || status === "cancelled") {
-        patch.completed_at = now;
-      } else if (status === "active") {
+      const patch: Record<string, unknown> = { status: derivedStatus, updated_at: now };
+
+      if (derivedStatus === "active" && currentTrip?.status !== "active" && !currentTrip?.started_at) {
         patch.started_at = now;
       }
+      if (derivedStatus === "completed" && currentTrip?.status !== "completed") {
+        patch.completed_at = now;
+      }
+
       await supabase.from("trips").update(patch).eq("id", shipment.trip_id);
     }
   }
@@ -172,22 +191,39 @@ export async function deleteTrip(id: number) {
 export async function completeTrip(id: number) {
   const now = new Date().toISOString();
 
-  await supabase.from("trips").update({ status: "completed", completed_at: now, updated_at: now }).eq("id", id);
-  await supabase.from("shipments").update({ status: "completed" }).eq("trip_id", id);
+  const { error: tripError } = await supabase.from("trips").update({ status: "completed", completed_at: now, updated_at: now }).eq("id", id);
+  if (tripError) throw tripError;
+  const { error: shipError } = await supabase.from("shipments").update({ status: "completed" }).eq("trip_id", id);
+  if (shipError) throw shipError;
 }
 
 export async function cancelTrip(id: number) {
   const now = new Date().toISOString();
 
-  await supabase.from("trips").update({ status: "cancelled", completed_at: now, updated_at: now }).eq("id", id);
-  await supabase.from("shipments").update({ status: "cancelled" }).eq("trip_id", id);
+  const { error: tripError } = await supabase.from("trips").update({ status: "completed", completed_at: now, updated_at: now }).eq("id", id);
+  if (tripError) throw tripError;
+  const { error: shipError } = await supabase.from("shipments").update({ status: "cancelled" }).eq("trip_id", id);
+  if (shipError) throw shipError;
 }
 
 export async function startTrip(id: number) {
   const now = new Date().toISOString();
 
-  await supabase.from("trips").update({ status: "active", started_at: now, updated_at: now }).eq("id", id);
-  await supabase.from("shipments").update({ status: "active" }).eq("trip_id", id);
+  const { error: tripError } = await supabase.from("trips").update({ status: "active", started_at: now, updated_at: now }).eq("id", id);
+  if (tripError) throw tripError;
+  const { error: shipError } = await supabase.from("shipments").update({ status: "active" }).eq("trip_id", id);
+  if (shipError) throw shipError;
+}
+
+export async function startSoloShipment(shipmentId: number, shipmentName: string) {
+  const now = new Date().toISOString();
+  const trip = await createTrip({
+    trip_name: shipmentName,
+    status: "active",
+    started_at: now,
+  });
+  await updateShipmentTrip(shipmentId, trip.id, false, "active");
+  return trip;
 }
 
 // ---------- Combined view ----------

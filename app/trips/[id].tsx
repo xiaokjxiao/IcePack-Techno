@@ -107,6 +107,7 @@ export default function TripDetailScreen() {
 
   const handleCompleteTrip = useCallback(async () => {
     if (!trip || actionLoading) return;
+    console.log("[handleCompleteTrip] Starting complete for trip", trip.id, trip.name);
     setActionLoading(true);
     const prevTrip = trip;
     const prevShipments = allShipments;
@@ -114,7 +115,9 @@ export default function TripDetailScreen() {
     setAllShipments((prev) => prev.map((s) => ({ ...s, status: "completed" as const })));
     try {
       await completeTrip(trip.id);
+      console.log("[handleCompleteTrip] Success - trip", trip.id, "marked completed");
     } catch (e) {
+      console.error("[handleCompleteTrip] Failed for trip", trip.id, e);
       setTrip(prevTrip);
       setAllShipments(prevShipments);
       Alert.alert("Error", "Failed to complete trip");
@@ -125,14 +128,17 @@ export default function TripDetailScreen() {
 
   const handleCancelTrip = useCallback(async () => {
     if (!trip || actionLoading) return;
+    console.log("[handleCancelTrip] Starting cancel for trip", trip.id, trip.name);
     setActionLoading(true);
     const prevTrip = trip;
     const prevShipments = allShipments;
-    setTrip((p) => p ? { ...p, status: "cancelled" as const } : null);
+    setTrip((p) => p ? { ...p, status: "completed" as const } : null);
     setAllShipments((prev) => prev.map((s) => ({ ...s, status: "cancelled" as const })));
     try {
       await cancelTrip(trip.id);
+      console.log("[handleCancelTrip] Success - trip", trip.id, "cancelled");
     } catch (e) {
+      console.error("[handleCancelTrip] Failed for trip", trip.id, e);
       setTrip(prevTrip);
       setAllShipments(prevShipments);
       Alert.alert("Error", "Failed to cancel trip");

@@ -27,6 +27,7 @@ import {
   getShipment,
   getTrip,
   updateShipmentStatus,
+  startSoloShipment,
 } from "@/lib/icepack/services";
 
 type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
@@ -106,8 +107,14 @@ export default function ShipmentDetailScreen() {
       if (!shipment) return;
       setActionLoading(true);
       try {
-        await updateShipmentStatus(shipment.id, newStatus);
-        setShipment((prev) => prev ? { ...prev, status: newStatus } : null);
+        if (!shipment.trip_id && newStatus === "active") {
+          const newTrip = await startSoloShipment(shipment.id, shipment.shipment_name);
+          setShipment((prev) => prev ? { ...prev, status: "active", trip_id: newTrip.id, is_planned: false } : null);
+          setTrip(newTrip);
+        } else {
+          await updateShipmentStatus(shipment.id, newStatus);
+          setShipment((prev) => prev ? { ...prev, status: newStatus } : null);
+        }
       } catch (e) {
         Alert.alert("Error", "Failed to update status");
       } finally {

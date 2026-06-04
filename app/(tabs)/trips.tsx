@@ -5,21 +5,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronDown, ChevronUp, Package } from "lucide-react-native";
 import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
+import { SearchFilterBar, type FilterOption } from "@/components/ui/SearchFilterBar";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
 } from "@/hooks/use-responsive-size";
 import type { Trip } from "@/lib/icepack/data";
+import { formatHours, liveStateFor } from "@/lib/icepack/data";
 
 import { getTripsWithAllShipments, type TripWithShipmentViews } from "@/lib/icepack/services";
 
-type FilterStatus = "all" | "active" | "completed";
-
-const FILTERS: { key: FilterStatus; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "completed", label: "Completed" },
-];
+type FilterStatus = "all" | "active" | "completed" | "planned";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "#14b8a6",
@@ -37,16 +33,16 @@ const STATUS_LABELS: Record<string, string> = {
 
 function deriveTripStatus(shipments: ShipmentView[]): string {
   if (shipments.length === 0) return "planned";
-  const allCompleted = shipments.every((s) => s.shipmentStatus === "completed");
-  if (allCompleted) return "completed";
-  const allCancelled = shipments.every((s) => s.shipmentStatus === "cancelled");
-  if (allCancelled) return "cancelled";
+  const allFinished = shipments.every(
+    (s) => s.shipmentStatus === "completed" || s.shipmentStatus === "cancelled",
+  );
+  if (allFinished) return "completed";
   const anyActive = shipments.some((s) => s.shipmentStatus === "active");
   if (anyActive) return "active";
   return "planned";
 }
 
-function TripHeader({
+export function TripHeader({
   trip,
   shipments,
   isExpanded,
@@ -117,7 +113,9 @@ function TripHeader({
                 </Text>
               </View>
               <Text style={{ fontSize: xsSize, color: "#9bb4c7" }}>
-                {trip.durationHours}h
+                {derivedStatus === "active"
+                  ? formatHours(liveStateFor(trip).elapsedHours)
+                  : `${trip.durationHours}h`}
               </Text>
             </View>
           </View>
@@ -142,6 +140,7 @@ export default function TripsScreen() {
   const [tripData, setTripData] = useState<TripWithShipmentViews[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -162,13 +161,18 @@ export default function TripsScreen() {
   const counts = useMemo(() => {
     const active = tripData.filter((t) => t.trip.status === "active").length;
     const completed = tripData.filter((t) => t.trip.status === "completed").length;
-    return { all: tripData.length, active, completed };
+    const planned = tripData.filter((t) => t.trip.status === "planned").length;
+    return { all: tripData.length, active, completed, planned };
   }, [tripData]);
 
   const filteredTrips = useMemo(() => {
-    if (filter === "all") return tripData;
-    return tripData.filter((t) => t.trip.status === filter);
-  }, [tripData, filter]);
+    let result = filter === "all" ? tripData : tripData.filter((t) => t.trip.status === filter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((t) => t.trip.name.toLowerCase().includes(q));
+    }
+    return result;
+  }, [tripData, filter, searchQuery]);
 
   const toggleExpand = useCallback((id: number) => {
     setExpandedIds((prev) => {
@@ -178,6 +182,13 @@ export default function TripsScreen() {
       return next;
     });
   }, []);
+
+  const filterOptions = useMemo<FilterOption[]>(() => [
+    { key: "all", label: "All", count: counts.all },
+    { key: "active", label: "Active", count: counts.active },
+    { key: "completed", label: "Completed", count: counts.completed },
+    { key: "planned", label: "Planned", count: counts.planned },
+  ], [counts]);
 
   if (loading) {
     return (
@@ -209,56 +220,28 @@ export default function TripsScreen() {
           Trips
         </Text>
         <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>
-          {counts.all} total · {counts.active} active · {counts.completed} completed
+          {counts.all} total · {counts.active} active · {counts.completed} completed · {counts.planned} planned
         </Text>
       </LinearGradient>
 
       <View style={{ paddingHorizontal: padding, paddingTop: 16 }}>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", paddingVertical: 8, gap: 8 }}>
-          {FILTERS.map((f) => {
-            const active = filter === f.key;
-            return (
-              <TouchableOpacity
-                key={f.key}
-                onPress={() => setFilter(f.key)}
-                activeOpacity={0.7}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  borderRadius: 18,
-                  backgroundColor: active ? "#1a8ad4" : "#f4f8fa",
-                  borderWidth: 1,
-                  borderColor: active ? "#1a8ad4" : "#e8eef3",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <Text style={{ fontSize: labelSize, fontWeight: "600", color: active ? "white" : "#587a94" }}>
-                  {f.label}
-                </Text>
-                <View
-                  style={{
-                    paddingHorizontal: 5,
-                    paddingVertical: 1,
-                    borderRadius: 9,
-                    backgroundColor: active ? "rgba(255,255,255,0.25)" : "rgba(88,122,148,0.12)",
-                    minWidth: 20,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={{ fontSize: labelSize * 0.75, fontWeight: "700", color: active ? "white" : "#587a94" }}>
-                    {counts[f.key]}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <SearchFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search trips..."
+          options={filterOptions}
+          filter={filter}
+          onFilterChange={(key) => setFilter(key as FilterStatus)}
+          labelSize={labelSize}
+        />
 
         {filteredTrips.length === 0 ? (
-          <Text style={{ fontSize: labelSize, color: "rgba(0,0,0,0.4)", textAlign: "center", marginTop: 32 }}>
-            No {filter === "all" ? "" : filter} trips found
+          <Text style={{ fontSize: labelSize, color: "rgba(0,0,0,0.4)", textAlign: "center", marginTop: 16 }}>
+            {searchQuery.trim()
+              ? `No trips matching "${searchQuery}"`
+              : filter === "all"
+                ? "No trips found"
+                : `No ${filter} trips found`}
           </Text>
         ) : (
           <View style={{ gap: 10, marginTop: 8 }}>

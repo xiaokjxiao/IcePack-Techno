@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatCard } from "@/components/trips/StatCard";
 import { TripCard } from "@/components/trips/TripCard";
+import { TripHeader } from "@/app/(tabs)/trips";
 import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
 import {
   useResponsiveFontSize,
@@ -56,6 +57,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shipments, setShipments] = useState<ShipmentView[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   useFocusEffect(
     useCallback(() => {
@@ -73,6 +75,15 @@ export default function HomeScreen() {
       })();
     }, []),
   );
+
+  const toggleExpand = useCallback((id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const activeShipments = shipments.filter((s) => s.shipmentStatus === "active");
   const completedShipments = shipments.filter((s) => s.shipmentStatus === "completed");
@@ -303,39 +314,27 @@ export default function HomeScreen() {
               </Text>
             ) : (
               <View style={{ gap: 12, marginBottom: 24 }}>
-                {activeGrouped.groups.map(([tripId, groupShipments]) => (
-                  <View
-                    key={`group-${tripId}`}
-                    className="rounded-2xl bg-sea-50 border border-sea-200"
-                    style={{ padding: 10 }}
-                  >
-                    <Link href={`/trips/${tripId}` as any} asChild>
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        className="flex-row items-center justify-between"
-                        style={{ paddingHorizontal: 6, paddingBottom: 8 }}
-                      >
-                        <View className="flex-row items-center gap-2">
-                          <View className="size-2 rounded-full bg-sea-600" />
-                          <Text className="text-sea-900 font-semibold text-xs uppercase tracking-wider">
-                            {groupShipments[0]?.tripName ?? `Trip #${tripId}`}
-                          </Text>
+                {activeGrouped.groups.map(([tripId, groupShipments]) => {
+                  const trip = toTrip(groupShipments[0]);
+                  const expanded = expandedIds.has(tripId);
+                  return (
+                    <View key={`group-${tripId}`}>
+                      <TripHeader
+                        trip={trip}
+                        shipments={groupShipments}
+                        isExpanded={expanded}
+                        onToggle={() => toggleExpand(tripId)}
+                      />
+                      {expanded && (
+                        <View style={{ paddingLeft: 20, paddingTop: 8, gap: 8 }}>
+                          {groupShipments.map((s) => (
+                            <ShipmentCard key={s.id} shipment={s} />
+                          ))}
                         </View>
-                        <View className="flex-row items-center gap-1">
-                          <Text className="text-[10px] font-semibold text-sea-700">
-                            {groupShipments.length} shipments
-                          </Text>
-                          <ArrowRight size={10} color="#0369a1" strokeWidth={2.5} />
-                        </View>
-                      </TouchableOpacity>
-                    </Link>
-                    <View style={{ gap: 8 }}>
-                      {groupShipments.map((s) => (
-                        <ShipmentCard key={s.id} shipment={s} />
-                      ))}
+                      )}
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
                 {activeGrouped.solo.map((s) => (
                   <TripCard key={s.id} trip={toTrip(s)} />
                 ))}

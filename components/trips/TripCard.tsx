@@ -25,7 +25,7 @@ const RAIL_COLORS: Record<string, string> = {
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
   active: { bg: "bg-[#14b8a6]/15", text: "text-[#14b8a6]", label: "Active" },
-  completed: { bg: "bg-[#22c55e]/15", text: "text-[#22c55e]", label: "Done" },
+  completed: { bg: "bg-[#22c55e]/15", text: "text-[#22c55e]", label: "Delivered" },
   cancelled: { bg: "bg-[#ef4444]/15", text: "text-[#ef4444]", label: "Cancelled" },
   planned: { bg: "bg-[#06b6d4]/15", text: "text-[#06b6d4]", label: "Planned" },
 };
@@ -184,9 +184,9 @@ export function TripCard({
                 isActive
                   ? `${live.pctRemaining}%`
                   : isPlanned
-                    ? "Ready"
+                    ? "Planned"
                     : trip.status === "completed"
-                      ? "Done"
+                      ? "Delivered"
                       : trip.status === "cancelled"
                         ? "Cancelled"
                         : "--"

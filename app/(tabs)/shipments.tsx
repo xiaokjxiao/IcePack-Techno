@@ -4,16 +4,15 @@ import {
   Alert,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { Search, X, Layers } from "lucide-react-native";
+import { Layers } from "lucide-react-native";
 import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
-import { FilterBar, type FilterKey } from "@/components/shipments/FilterBar";
+import { SearchFilterBar, type FilterOption } from "@/components/ui/SearchFilterBar";
 import { SelectModeBanner } from "@/components/shipments/SelectModeBanner";
 import { GroupTripModal } from "@/components/shipments/GroupTripModal";
 import {
@@ -33,7 +32,7 @@ export default function ShipmentsScreen() {
 
   const [loading, setLoading] = useState(true);
   const [allShipments, setAllShipments] = useState<ShipmentView[]>([]);
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [filter, setFilter] = useState<string>("all");
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -81,6 +80,14 @@ export default function ShipmentsScreen() {
     () => allShipments.filter((s) => s.isPlanned),
     [allShipments],
   );
+
+  const filterOptions = useMemo<FilterOption[]>(() => [
+    { key: "all", label: "All", count: allShipments.length },
+    { key: "active", label: "Active", count: allShipments.filter((s) => s.shipmentStatus === "active").length },
+    { key: "planned", label: "Planned", count: plannedShipments.length },
+    { key: "completed", label: "Completed", count: allShipments.filter((s) => s.shipmentStatus === "completed").length },
+    { key: "cancelled", label: "Cancelled", count: allShipments.filter((s) => s.shipmentStatus === "cancelled").length },
+  ], [allShipments, plannedShipments]);
 
   const handleToggleSelect = useCallback((shipmentId: number) => {
     setSelectedIds((prev) => {
@@ -242,40 +249,6 @@ export default function ShipmentsScreen() {
             </TouchableOpacity>
           )}
         </View>
-
-        {!selectMode && (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: "rgba(255,255,255,0.12)",
-              borderRadius: 12,
-              marginTop: 12,
-              paddingHorizontal: 12,
-              height: 40,
-            }}
-          >
-            <Search size={16} color="rgba(255,255,255,0.5)" strokeWidth={2} />
-            <TextInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search shipments..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              style={{
-                flex: 1,
-                fontSize: labelSize,
-                color: "white",
-                marginLeft: 8,
-                paddingVertical: 0,
-              }}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")} activeOpacity={0.7}>
-                <X size={16} color="rgba(255,255,255,0.5)" strokeWidth={2} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
       </LinearGradient>
 
       {selectMode ? (
@@ -285,12 +258,17 @@ export default function ShipmentsScreen() {
           labelSize={labelSize}
         />
       ) : (
-        <FilterBar
-          shipments={allShipments}
-          filter={filter}
-          labelSize={labelSize}
-          onFilterChange={setFilter}
-        />
+        <View style={{ paddingHorizontal: padding, paddingTop: 12 }}>
+          <SearchFilterBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search shipments..."
+            options={filterOptions}
+            filter={filter}
+            onFilterChange={setFilter}
+            labelSize={labelSize}
+          />
+        </View>
       )}
 
       {selectMode && selectedIds.size >= 2 && (
