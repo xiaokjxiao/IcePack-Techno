@@ -62,8 +62,7 @@ export default function ShipmentsScreen() {
   const filteredByStatus = useMemo(
     () => {
       if (filter === "all") return allShipments;
-      if (filter === "planned") return allShipments.filter((s) => s.isPlanned);
-      return allShipments.filter((s) => s.tripStatus === filter);
+      return allShipments.filter((s) => s.shipmentStatus === filter);
     },
     [allShipments, filter],
   );
@@ -171,9 +170,9 @@ export default function ShipmentsScreen() {
               }}
             >
               {allShipments.length} total —{" "}
-              {allShipments.filter((s) => s.tripStatus === "active").length} active,{" "}
+              {allShipments.filter((s) => s.shipmentStatus === "active").length} active,{" "}
               {plannedShipments.length} planned,{" "}
-              {allShipments.filter((s) => s.tripStatus === "completed").length} done
+              {allShipments.filter((s) => s.shipmentStatus === "completed").length} done
             </Text>
           </View>
           {!selectMode && (

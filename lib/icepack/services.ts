@@ -65,6 +65,33 @@ export async function deleteShipment(id: number) {
   if (error) throw error;
 }
 
+export async function updateShipmentStatus(id: number, status: TripStatus) {
+  const { data: shipment } = await supabase
+    .from("shipments")
+    .update({ status })
+    .eq("id", id)
+    .select("trip_id")
+    .single();
+
+  if (shipment?.trip_id) {
+    const { data: siblings } = await supabase
+      .from("shipments")
+      .select("status")
+      .eq("trip_id", shipment.trip_id);
+
+    if (siblings && siblings.length > 0 && siblings.every((s) => s.status === status)) {
+      const now = new Date().toISOString();
+      const patch: Record<string, unknown> = { status, updated_at: now };
+      if (status === "completed" || status === "cancelled") {
+        patch.completed_at = now;
+      } else if (status === "active") {
+        patch.started_at = now;
+      }
+      await supabase.from("trips").update(patch).eq("id", shipment.trip_id);
+    }
+  }
+}
+
 // ---------- Trip services ----------
 
 export async function getTrips() {
@@ -142,6 +169,27 @@ export async function deleteTrip(id: number) {
   if (error) throw error;
 }
 
+export async function completeTrip(id: number) {
+  const now = new Date().toISOString();
+
+  await supabase.from("trips").update({ status: "completed", completed_at: now, updated_at: now }).eq("id", id);
+  await supabase.from("shipments").update({ status: "completed" }).eq("trip_id", id);
+}
+
+export async function cancelTrip(id: number) {
+  const now = new Date().toISOString();
+
+  await supabase.from("trips").update({ status: "cancelled", completed_at: now, updated_at: now }).eq("id", id);
+  await supabase.from("shipments").update({ status: "cancelled" }).eq("trip_id", id);
+}
+
+export async function startTrip(id: number) {
+  const now = new Date().toISOString();
+
+  await supabase.from("trips").update({ status: "active", started_at: now, updated_at: now }).eq("id", id);
+  await supabase.from("shipments").update({ status: "active" }).eq("trip_id", id);
+}
+
 // ---------- Combined view ----------
 
 function mapTripWithShipment(row: TripWithShipments, shipment: ShipmentRow): Trip {
@@ -188,6 +236,58 @@ export async function getTripsWithShipments() {
   return [] as Trip[];
 }
 
+export interface TripWithShipmentViews {
+  trip: Trip;
+  shipments: ShipmentView[];
+}
+
+export async function getTripsWithAllShipments(): Promise<TripWithShipmentViews[]> {
+  const [{ data: trips }, { data: allShipments }] = await Promise.all([
+    supabase.from("trips").select("*").order("created_at", { ascending: false }),
+    supabase.from("shipments").select("*"),
+  ]);
+
+  if (!trips?.length) return [];
+
+  const shipmentsMap = new Map<number, ShipmentRow[]>();
+  for (const s of (allShipments ?? [])) {
+    if (s.trip_id != null) {
+      const arr = shipmentsMap.get(s.trip_id) || [];
+      arr.push(s);
+      shipmentsMap.set(s.trip_id, arr);
+    }
+  }
+
+  return trips
+    .map((t) => {
+      const tripShipments = shipmentsMap.get(t.id) ?? [];
+      const primary = tripShipments[0];
+      if (!primary) return null;
+      const trip = mapTripWithShipment(t as TripWithShipments, primary);
+      const shipments: ShipmentView[] = tripShipments.map((s) => ({
+        id: s.id,
+        name: s.shipment_name,
+        productId: s.cargo_category,
+        cargoKg: s.cargo_kg,
+        durationHours: s.duration_hours,
+        originLocation: s.origin_location,
+        destinationLocation: s.destination_location,
+        tripId: trip.id,
+        tripName: t.trip_name,
+        tripStatus: t.status,
+        shipmentStatus: s.status,
+        isPlanned: s.is_planned ?? false,
+        recommendedIceKg: s.recommended_ice_kg ?? null,
+        iceRemainingKg: s.ice_remaining_kg ?? null,
+        meltRateKgPerHr: s.melt_rate_kg_per_hr ?? null,
+        safeDurationHours: s.safe_duration_hours ?? null,
+        startedAt: t.started_at,
+      }));
+      return { trip, shipments };
+    })
+    .filter(Boolean) as TripWithShipmentViews[];
+}
+
 export async function getTripsWithShipmentsByStatus(status: TripStatus) {
   const { data: trips, error } = await supabase
     .from("trips")
@@ -214,10 +314,14 @@ export async function getTripWithShipmentsById(tripId: number): Promise<Trip | n
   return shipment ? mapTripWithShipment(row, shipment) : null;
 }
 
-export async function updateShipmentTrip(shipmentId: number, tripId: number, isPlanned = false) {
+export async function updateShipmentTrip(shipmentId: number, tripId: number, isPlanned = false, status?: TripStatus) {
+  const updateData: Record<string, unknown> = { trip_id: tripId, is_planned: isPlanned };
+  if (status) {
+    updateData.status = status;
+  }
   const { error } = await supabase
     .from("shipments")
-    .update({ trip_id: tripId, is_planned: isPlanned })
+    .update(updateData)
     .eq("id", shipmentId);
   if (error) {
     console.error("updateShipmentTrip failed:", error);
@@ -254,6 +358,7 @@ export async function getShipmentsWithTrips() {
     tripId: s.trip_id,
     tripName: s.trip?.trip_name ?? null,
     tripStatus: s.trip?.status ?? null,
+    shipmentStatus: s.status,
     isPlanned: s.is_planned ?? false,
     recommendedIceKg: s.recommended_ice_kg ?? null,
     iceRemainingKg: s.ice_remaining_kg ?? null,
@@ -275,7 +380,7 @@ export async function createGroupedTrip(
   });
 
   for (const trip of selectedTrips) {
-    await updateShipmentTrip(trip.shipmentId, newTrip.id, !startNow);
+    await updateShipmentTrip(trip.shipmentId, newTrip.id, !startNow, startNow ? "active" : "planned");
   }
 
   return newTrip;
@@ -302,6 +407,7 @@ export async function createGroupedTripFromShipments(
       .update({
         trip_id: newTrip.id,
         is_planned: !startNow,
+        status: startNow ? "active" : "planned",
         recommended_ice_kg: calc.recommendedIceKg,
         ice_remaining_kg: calc.recommendedIceKg,
         melt_rate_kg_per_hr: calc.meltRateKgPerHr,

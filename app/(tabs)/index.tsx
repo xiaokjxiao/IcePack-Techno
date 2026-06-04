@@ -37,7 +37,7 @@ function toTrip(s: ShipmentView): Trip {
 }
 
 function isShipmentCritical(s: ShipmentView): boolean {
-  if (s.tripStatus !== "active") return false;
+  if (s.shipmentStatus !== "active") return false;
   if (s.recommendedIceKg == null || s.iceRemainingKg == null || s.meltRateKgPerHr == null || s.safeDurationHours == null) return false;
   const trip = toTrip(s);
   const live = liveStateFor(trip);
@@ -74,8 +74,8 @@ export default function HomeScreen() {
     }, []),
   );
 
-  const activeShipments = shipments.filter((s) => s.tripStatus === "active");
-  const completedShipments = shipments.filter((s) => s.tripStatus === "completed");
+  const activeShipments = shipments.filter((s) => s.shipmentStatus === "active");
+  const completedShipments = shipments.filter((s) => s.shipmentStatus === "completed");
   const plannedShipments = shipments.filter((s) => s.isPlanned);
 
   const criticalShipments = activeShipments.filter(isShipmentCritical);

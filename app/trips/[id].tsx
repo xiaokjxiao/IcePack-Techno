@@ -10,7 +10,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, CheckCircle2, XCircle, Gauge } from "lucide-react-native";
+import { Play, CheckCircle2, XCircle, ChevronLeft } from "lucide-react-native";
 import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
 import {
   useResponsiveFontSize,
@@ -18,11 +18,13 @@ import {
 } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 import type { Database } from "@/lib/database.types";
-import type { Trip, TripStatus } from "@/lib/icepack/data";
+import type { Trip } from "@/lib/icepack/data";
 import {
   getTripWithShipmentsById,
   getShipmentsByTripId,
-  updateTripStatus,
+  startTrip,
+  completeTrip,
+  cancelTrip,
 } from "@/lib/icepack/services";
 
 type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
@@ -39,6 +41,7 @@ function toShipmentView(s: ShipmentRow, trip: Trip): ShipmentView {
     tripId: trip.id,
     tripName: trip.name,
     tripStatus: trip.status,
+    shipmentStatus: s.status,
     isPlanned: s.is_planned ?? false,
     recommendedIceKg: s.recommended_ice_kg ?? null,
     iceRemainingKg: s.ice_remaining_kg ?? null,
@@ -51,7 +54,6 @@ function toShipmentView(s: ShipmentRow, trip: Trip): ShipmentView {
 export default function TripDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { isTablet } = useScreenDimensions();
   const titleSize = useResponsiveFontSize("2xl");
   const labelSize = useResponsiveFontSize("sm");
   const padding = useResponsiveSpacing("lg");
@@ -84,21 +86,60 @@ export default function TripDetailScreen() {
     }, [id]),
   );
 
-  const handleStatusChange = useCallback(
-    async (newStatus: TripStatus) => {
-      if (!trip) return;
-      setActionLoading(true);
-      try {
-        await updateTripStatus(trip.id, newStatus);
-        setTrip((prev) => prev ? { ...prev, status: newStatus } : null);
-      } catch (e) {
-        Alert.alert("Error", "Failed to update status");
-      } finally {
-        setActionLoading(false);
-      }
-    },
-    [trip],
-  );
+  const handleStartTrip = useCallback(async () => {
+    if (!trip || actionLoading) return;
+    setActionLoading(true);
+    const prevTrip = trip;
+    const prevShipments = allShipments;
+    const now = new Date().toISOString();
+    setTrip((p) => p ? { ...p, status: "active" as const, startedAt: now } : null);
+    setAllShipments((prev) => prev.map((s) => ({ ...s, status: "active" as const })));
+    try {
+      await startTrip(trip.id);
+    } catch (e) {
+      setTrip(prevTrip);
+      setAllShipments(prevShipments);
+      Alert.alert("Error", "Failed to start trip");
+    } finally {
+      setActionLoading(false);
+    }
+  }, [trip, allShipments, actionLoading]);
+
+  const handleCompleteTrip = useCallback(async () => {
+    if (!trip || actionLoading) return;
+    setActionLoading(true);
+    const prevTrip = trip;
+    const prevShipments = allShipments;
+    setTrip((p) => p ? { ...p, status: "completed" as const } : null);
+    setAllShipments((prev) => prev.map((s) => ({ ...s, status: "completed" as const })));
+    try {
+      await completeTrip(trip.id);
+    } catch (e) {
+      setTrip(prevTrip);
+      setAllShipments(prevShipments);
+      Alert.alert("Error", "Failed to complete trip");
+    } finally {
+      setActionLoading(false);
+    }
+  }, [trip, allShipments, actionLoading]);
+
+  const handleCancelTrip = useCallback(async () => {
+    if (!trip || actionLoading) return;
+    setActionLoading(true);
+    const prevTrip = trip;
+    const prevShipments = allShipments;
+    setTrip((p) => p ? { ...p, status: "cancelled" as const } : null);
+    setAllShipments((prev) => prev.map((s) => ({ ...s, status: "cancelled" as const })));
+    try {
+      await cancelTrip(trip.id);
+    } catch (e) {
+      setTrip(prevTrip);
+      setAllShipments(prevShipments);
+      Alert.alert("Error", "Failed to cancel trip");
+    } finally {
+      setActionLoading(false);
+    }
+  }, [trip, allShipments, actionLoading]);
 
   if (loading) {
     return (
@@ -149,8 +190,9 @@ export default function TripDetailScreen() {
             marginBottom: 12,
           }}
         >
+          <ChevronLeft size={labelSize + 4} color="rgba(255,255,255,0.7)" strokeWidth={2} />
           <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>
-            ← Back
+            Back
           </Text>
         </TouchableOpacity>
         <Text
@@ -172,18 +214,8 @@ export default function TripDetailScreen() {
                 paddingHorizontal: 10,
                 paddingVertical: 3,
                 borderRadius: 12,
-                backgroundColor: "rgba(6, 182, 212, 0.2)",
               }}
             >
-              <Text
-                style={{
-                  fontSize: labelSize * 0.85,
-                  fontWeight: "600",
-                  color: "#67e8f9",
-                }}
-              >
-                Group Trip
-              </Text>
             </View>
             <Text
               style={{
@@ -215,7 +247,7 @@ export default function TripDetailScreen() {
         <View style={{ paddingTop: 8, paddingBottom: 20, gap: 10 }}>
           {trip.status === "planned" && (
             <TouchableOpacity
-              onPress={() => handleStatusChange("active")}
+              onPress={handleStartTrip}
               disabled={actionLoading}
               activeOpacity={0.85}
               style={{
@@ -242,7 +274,7 @@ export default function TripDetailScreen() {
           {trip.status === "active" && (
             <>
               <TouchableOpacity
-                onPress={() => handleStatusChange("completed")}
+                onPress={handleCompleteTrip}
                 disabled={actionLoading}
                 activeOpacity={0.85}
                 style={{
@@ -270,7 +302,7 @@ export default function TripDetailScreen() {
 
           {trip.status !== "completed" && trip.status !== "cancelled" && (
             <TouchableOpacity
-              onPress={() => handleStatusChange("cancelled")}
+              onPress={handleCancelTrip}
               disabled={actionLoading}
               activeOpacity={0.85}
               style={{
@@ -305,6 +337,23 @@ export default function TripDetailScreen() {
             >
               <Text style={{ fontSize: labelSize, color: "#16a34a", fontWeight: "600" }}>
                 Completed
+              </Text>
+            </View>
+          )}
+
+          {trip.status === "cancelled" && (
+            <View
+              style={{
+                backgroundColor: "#fef2f2",
+                borderRadius: 12,
+                padding: 14,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: "#fecaca",
+              }}
+            >
+              <Text style={{ fontSize: labelSize, color: "#dc2626", fontWeight: "600" }}>
+                Cancelled
               </Text>
             </View>
           )}

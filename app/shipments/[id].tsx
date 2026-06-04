@@ -10,7 +10,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, CheckCircle2, XCircle, Gauge } from "lucide-react-native";
+import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft } from "lucide-react-native";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
@@ -26,7 +26,7 @@ import { ProductIcon } from "@/components/ui/ProductIcon";
 import {
   getShipment,
   getTrip,
-  updateTripStatus,
+  updateShipmentStatus,
 } from "@/lib/icepack/services";
 
 type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
@@ -103,18 +103,18 @@ export default function ShipmentDetailScreen() {
 
   const handleStatusChange = useCallback(
     async (newStatus: TripStatus) => {
-      if (!trip) return;
+      if (!shipment) return;
       setActionLoading(true);
       try {
-        await updateTripStatus(trip.id, newStatus);
-        setTrip((prev) => prev ? { ...prev, status: newStatus } : null);
+        await updateShipmentStatus(shipment.id, newStatus);
+        setShipment((prev) => prev ? { ...prev, status: newStatus } : null);
       } catch (e) {
         Alert.alert("Error", "Failed to update status");
       } finally {
         setActionLoading(false);
       }
     },
-    [trip],
+    [shipment],
   );
 
   if (loading) {
@@ -166,8 +166,9 @@ export default function ShipmentDetailScreen() {
           activeOpacity={0.7}
           style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
         >
+          <ChevronLeft size={labelSize + 4} color="rgba(255,255,255,0.7)" strokeWidth={2} />
           <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>
-            ← Back
+            Back
           </Text>
         </TouchableOpacity>
 
@@ -183,43 +184,45 @@ export default function ShipmentDetailScreen() {
           </View>
         </View>
 
-        {trip && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 10,
+          }}
+        >
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              marginTop: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 3,
+              borderRadius: 12,
+              backgroundColor: shipment.status === "active"
+                ? "rgba(20, 184, 166, 0.2)"
+                : shipment.status === "planned"
+                  ? "rgba(6, 182, 212, 0.2)"
+                  : shipment.status === "completed"
+                    ? "rgba(34, 197, 94, 0.2)"
+                    : "rgba(148, 163, 184, 0.2)",
             }}
           >
-            <View
+            <Text
               style={{
-                paddingHorizontal: 10,
-                paddingVertical: 3,
-                borderRadius: 12,
-                backgroundColor: trip.status === "active"
-                  ? "rgba(20, 184, 166, 0.2)"
-                  : trip.status === "planned"
-                    ? "rgba(6, 182, 212, 0.2)"
-                    : "rgba(148, 163, 184, 0.2)",
+                fontSize: labelSize * 0.8,
+                fontWeight: "600",
+                color: shipment.status === "active" ? "#5eead4" : shipment.status === "planned" ? "#67e8f9" : shipment.status === "completed" ? "#86efac" : "#cbd5e1",
+                textTransform: "uppercase",
               }}
             >
-              <Text
-                style={{
-                  fontSize: labelSize * 0.8,
-                  fontWeight: "600",
-                  color: trip.status === "active" ? "#5eead4" : trip.status === "planned" ? "#67e8f9" : "#cbd5e1",
-                  textTransform: "uppercase",
-                }}
-              >
-                {trip.status}
-              </Text>
-            </View>
+              {shipment.status}
+            </Text>
+          </View>
+          {trip && (
             <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.6)" }}>
               Trip: {trip.trip_name}
             </Text>
-          </View>
-        )}
+          )}
+        </View>
       </LinearGradient>
 
       <View style={{ paddingHorizontal: padding, paddingTop: padding, gap: 16 }}>
@@ -385,7 +388,7 @@ export default function ShipmentDetailScreen() {
             </View>
           )}
 
-          {trip?.status === "planned" && (
+          {shipment.status === "planned" && (
             <TouchableOpacity
               onPress={() => handleStatusChange("active")}
               disabled={actionLoading}
@@ -406,12 +409,12 @@ export default function ShipmentDetailScreen() {
                 <Play size={18} color="white" strokeWidth={2} />
               )}
               <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
-                {actionLoading ? "Starting..." : "Start Trip"}
+                {actionLoading ? "Starting..." : "Start Shipment"}
               </Text>
             </TouchableOpacity>
           )}
 
-          {trip?.status === "active" && (
+          {shipment.status === "active" && (
             <>
               <TouchableOpacity
                 onPress={() => handleStatusChange("completed")}
@@ -433,7 +436,7 @@ export default function ShipmentDetailScreen() {
                   <CheckCircle2 size={18} color="white" strokeWidth={2} />
                 )}
                 <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
-                  {actionLoading ? "Completing..." : "Complete Trip"}
+                  {actionLoading ? "Completing..." : "Complete Shipment"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -457,7 +460,7 @@ export default function ShipmentDetailScreen() {
             </>
           )}
 
-          {trip && trip.status !== "completed" && trip.status !== "cancelled" && (
+          {shipment.status !== "completed" && shipment.status !== "cancelled" && (
             <TouchableOpacity
               onPress={() => handleStatusChange("cancelled")}
               disabled={actionLoading}
@@ -476,12 +479,12 @@ export default function ShipmentDetailScreen() {
             >
               <XCircle size={18} color="#ef4444" strokeWidth={2} />
               <Text style={{ fontSize: labelSize, fontWeight: "600", color: "#ef4444" }}>
-                Cancel Trip
+                Cancel Shipment
               </Text>
             </TouchableOpacity>
           )}
 
-          {trip?.status === "completed" && (
+          {shipment.status === "completed" && (
             <View
               style={{
                 backgroundColor: "#f0fdf4",
@@ -493,7 +496,24 @@ export default function ShipmentDetailScreen() {
               }}
             >
               <Text style={{ fontSize: labelSize, color: "#16a34a", fontWeight: "600" }}>
-                Completed{trip.completed_at ? ` on ${new Date(trip.completed_at).toLocaleDateString()}` : ""}
+                Delivered
+              </Text>
+            </View>
+          )}
+
+          {shipment.status === "cancelled" && (
+            <View
+              style={{
+                backgroundColor: "#fef2f2",
+                borderRadius: 12,
+                padding: 14,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: "#fecaca",
+              }}
+            >
+              <Text style={{ fontSize: labelSize, color: "#dc2626", fontWeight: "600" }}>
+                Cancelled
               </Text>
             </View>
           )}

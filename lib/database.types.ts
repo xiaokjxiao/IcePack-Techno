@@ -55,6 +55,7 @@ export type Database = {
           recommended_ice_kg: number | null
           safe_duration_hours: number | null
           shipment_name: string
+          status: Database["public"]["Enums"]["trip_status_enum"]
           target_temp_max_c: number | null
           target_temp_min_c: number | null
           trip_id: number | null
@@ -74,6 +75,7 @@ export type Database = {
           recommended_ice_kg?: number | null
           safe_duration_hours?: number | null
           shipment_name: string
+          status?: Database["public"]["Enums"]["trip_status_enum"]
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
           trip_id?: number | null
@@ -93,6 +95,7 @@ export type Database = {
           recommended_ice_kg?: number | null
           safe_duration_hours?: number | null
           shipment_name?: string
+          status?: Database["public"]["Enums"]["trip_status_enum"]
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
           trip_id?: number | null

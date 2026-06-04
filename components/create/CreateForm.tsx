@@ -64,6 +64,7 @@ export function CreateForm() {
         destination_location: destinationLocation || null,
         notes: notes || null,
         is_planned: !startNow,
+        status: startNow ? "active" : "planned",
         recommended_ice_kg: calc.recommendedIceKg,
         ice_remaining_kg: calc.recommendedIceKg,
         melt_rate_kg_per_hr: calc.meltRateKgPerHr,

@@ -15,7 +15,7 @@ export const FILTERS: { key: FilterKey; label: string }[] = [
 export function filterCount(shipments: ShipmentView[], key: FilterKey): number {
   if (key === "all") return shipments.length;
   if (key === "planned") return shipments.filter((s) => s.isPlanned).length;
-  return shipments.filter((s) => s.tripStatus === key).length;
+  return shipments.filter((s) => s.shipmentStatus === key).length;
 }
 
 export function FilterBar({

@@ -170,6 +170,7 @@ export interface Shipment {
   iceRemainingKg: number | null;
   meltRateKgPerHr: number | null;
   safeDurationHours: number | null;
+  status: TripStatus;
   createdAt: string;
 }
 

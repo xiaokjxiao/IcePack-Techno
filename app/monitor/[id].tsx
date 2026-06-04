@@ -23,6 +23,7 @@ import {
   useResponsiveSpacing,
 } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
+import { ChevronLeft } from "lucide-react-native";
 import type { Trip, RiskLevel } from "@/lib/icepack/data";
 import {
   formatHours,
@@ -321,7 +322,10 @@ export default function MonitorScreen() {
         style={{ paddingLeft: padding, paddingRight: padding, paddingBottom: padding, paddingTop: insets.top + 16 }}
       >
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>← Back</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <ChevronLeft size={labelSize + 4} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+            <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>Back</Text>
+          </View>
           {isActive && <RiskBadgeInline level={live.risk} />}
         </TouchableOpacity>
         <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}>{shipment.shipment_name}</Text>
