@@ -180,7 +180,7 @@ export default function ShipmentDetailScreen() {
         </TouchableOpacity>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <ProductIcon name={product.icon} size={titleSize} />
+          <ProductIcon name={product.icon} size={titleSize} color="white" />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }} numberOfLines={1}>
               {shipment.shipment_name}

@@ -16,7 +16,6 @@ import {
   useResponsiveFontSize,
   useResponsiveSpacing,
 } from "@/hooks/use-responsive-size";
-import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 import type { Database } from "@/lib/database.types";
 import type { Trip } from "@/lib/icepack/data";
 import {

@@ -125,7 +125,7 @@ export default function ShipmentsScreen() {
         setSelectedIds(new Set());
         setSelectMode(false);
         setGroupName("");
-        router.replace("/(tabs)/");
+        router.replace("/(tabs)/shipments");
       } catch (e) {
         console.error("ShipmentsScreen: group failed", e);
         Alert.alert("Error", e instanceof Error ? e.message : "Failed to create group trip");
