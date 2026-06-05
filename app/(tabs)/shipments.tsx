@@ -2,8 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
-  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -12,11 +10,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { ArrowDownUp, Layers, Check } from "lucide-react-native";
+import { ArrowDownUp, Layers } from "lucide-react-native";
 import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
 import { SearchFilterBar, type FilterOption } from "@/components/ui/SearchFilterBar";
+import { SortFilterModal } from "@/components/ui/SortFilterModal";
 import { SelectModeBanner } from "@/components/shipments/SelectModeBanner";
 import { GroupTripModal } from "@/components/shipments/GroupTripModal";
+import { AssignTripModal } from "@/components/shipments/AssignTripModal";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
@@ -339,115 +339,18 @@ export default function ShipmentsScreen() {
         </View>
       )}
 
-      <Modal visible={sortOpen} transparent animationType="fade" onRequestClose={() => setSortOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.2)", justifyContent: "center", alignItems: "center" }} onPress={() => setSortOpen(false)}>
-          <Pressable
-            style={{
-              backgroundColor: "white",
-              borderRadius: 16,
-              width: 240,
-              paddingVertical: 8,
-              shadowColor: "#0b2540",
-              shadowOpacity: 0.15,
-              shadowRadius: 20,
-              shadowOffset: { width: 0, height: 8 },
-              elevation: 8,
-            }}
-          >
-            <Text style={{ fontSize: labelSize * 0.75, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
-              Status
-            </Text>
-            {filterOptions.map((opt) => {
-              const isActive = filter === opt.key;
-              return (
-                <TouchableOpacity
-                  key={opt.key}
-                  onPress={() => setFilter(opt.key)}
-                  activeOpacity={0.6}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: labelSize,
-                      fontWeight: isActive ? "700" : "500",
-                      color: isActive ? "#1a8ad4" : "#0b2540",
-                    }}
-                  >
-                    {opt.label}
-                  </Text>
-                  <View
-                    style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                      borderRadius: 8,
-                      backgroundColor: isActive ? "rgba(26,138,212,0.12)" : "rgba(88,122,148,0.08)",
-                      minWidth: 24,
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ fontSize: labelSize * 0.75, fontWeight: "700", color: isActive ? "#1a8ad4" : "#587a94" }}>
-                      {opt.count}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-
-            <View style={{ height: 1, backgroundColor: "#f0f4f8", marginVertical: 8 }} />
-
-            <Text style={{ fontSize: labelSize * 0.75, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, paddingHorizontal: 16, paddingBottom: 4 }}>
-              Sort
-            </Text>
-            {([
-              { key: "date" as const, label: "Newest", altLabel: "Oldest" },
-              { key: "name" as const, label: "A–Z", altLabel: "Z–A" },
-            ]).map(({ key, label, altLabel }) => {
-              const active = sortBy === key;
-              const displayLabel = active ? (sortDir === "asc" ? altLabel : label) : label;
-              return (
-                <TouchableOpacity
-                  key={key}
-                  onPress={() => {
-                    if (active) {
-                      setSortDir((d) => d === "asc" ? "desc" : "asc");
-                    } else {
-                      setSortBy(key);
-                      setSortDir(key === "name" ? "asc" : "desc");
-                    }
-                  }}
-                  activeOpacity={0.6}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: labelSize,
-                      fontWeight: active ? "700" : "500",
-                      color: active ? "#1a8ad4" : "#0b2540",
-                    }}
-                  >
-                    {displayLabel}
-                  </Text>
-                  {active && (
-                    <ArrowDownUp size={14} color="#1a8ad4" strokeWidth={2} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <SortFilterModal
+        visible={sortOpen}
+        onClose={() => setSortOpen(false)}
+        filter={filter}
+        onFilterChange={setFilter}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        sortDir={sortDir}
+        onSortDirChange={setSortDir}
+        filterOptions={filterOptions}
+        labelSize={labelSize}
+      />
 
       {selectMode && selectedIds.size >= 2 && (
         <TouchableOpacity
@@ -529,108 +432,16 @@ export default function ShipmentsScreen() {
         labelSize={labelSize}
       />
 
-      <Modal visible={showAssignModal} transparent animationType="fade" onRequestClose={() => setShowAssignModal(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)", justifyContent: "center", alignItems: "center" }} onPress={() => setShowAssignModal(false)}>
-          <Pressable
-            onPress={() => {}}
-            style={{
-              backgroundColor: "white",
-              borderRadius: 16,
-              width: 300,
-              paddingVertical: 16,
-              shadowColor: "#0b2540",
-              shadowOpacity: 0.15,
-              shadowRadius: 20,
-              shadowOffset: { width: 0, height: 8 },
-              elevation: 8,
-            }}
-          >
-            <Text style={{ fontSize: labelSize, fontWeight: "700", color: "#0b2540", textAlign: "center", marginBottom: 4, paddingHorizontal: 16 }}>
-              Assign to Trip
-            </Text>
-            <Text style={{ fontSize: labelSize * 0.85, color: "#94a3b8", textAlign: "center", marginBottom: 12, paddingHorizontal: 16 }}>
-              Choose a planned trip
-            </Text>
-
-            {plannedTrips.length === 0 ? (
-              <Text style={{ fontSize: labelSize, color: "#94a3b8", textAlign: "center", paddingVertical: 20, paddingHorizontal: 16 }}>
-                No planned trips available
-              </Text>
-            ) : (
-              <View style={{ maxHeight: 240 }}>
-                <ScrollView>
-                  {plannedTrips.map((trip) => {
-                    const isSelected = selectedTripId === trip.id;
-                    return (
-                      <TouchableOpacity
-                        key={trip.id}
-                        onPress={() => setSelectedTripId(trip.id)}
-                        activeOpacity={0.6}
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          paddingHorizontal: 16,
-                          paddingVertical: 12,
-                          borderBottomWidth: 1,
-                          borderBottomColor: "#f4f8fa",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: labelSize,
-                            fontWeight: isSelected ? "700" : "500",
-                            color: isSelected ? "#1a8ad4" : "#0b2540",
-                            flex: 1,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {trip.trip_name}
-                        </Text>
-                        {isSelected && (
-                          <Check size={16} color="#1a8ad4" strokeWidth={2.5} />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            )}
-
-            <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 12 }}>
-              <TouchableOpacity
-                onPress={() => setShowAssignModal(false)}
-                activeOpacity={0.7}
-                style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  backgroundColor: "#f4f8fa",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontSize: labelSize, fontWeight: "600", color: "#587a94" }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleAssignToTrip}
-                disabled={!selectedTripId || assignLoading}
-                activeOpacity={0.8}
-                style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  backgroundColor: !selectedTripId || assignLoading ? "#94c5e8" : "#1a8ad4",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
-                  {assignLoading ? "Assigning..." : "Assign"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <AssignTripModal
+        visible={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        plannedTrips={plannedTrips}
+        selectedTripId={selectedTripId}
+        onSelectTrip={setSelectedTripId}
+        onAssign={handleAssignToTrip}
+        assignLoading={assignLoading}
+        labelSize={labelSize}
+      />
     </View>
   );
 }

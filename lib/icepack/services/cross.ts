@@ -1,4 +1,3 @@
-import type { Database } from "@/lib/database.types";
 import {
   calculateIce,
   getProfileFor,
@@ -7,63 +6,35 @@ import {
 } from "@/lib/icepack/data";
 import type { ShipmentView } from "@/components/shipments/ShipmentCard";
 import { supabase } from "@/lib/supabase";
-
-type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
-type ShipmentInsert = Database["public"]["Tables"]["shipments"]["Insert"];
-type ShipmentUpdate = Database["public"]["Tables"]["shipments"]["Update"];
-
-type TripRow = Database["public"]["Tables"]["trips"]["Row"];
-type TripInsert = Database["public"]["Tables"]["trips"]["Insert"];
-type TripUpdate = Database["public"]["Tables"]["trips"]["Update"];
+import { createTrip } from "@/lib/icepack/services/trips";
+import type { ShipmentRow } from "@/lib/icepack/services/shipments";
+import type { TripRow } from "@/lib/icepack/services/trips";
 
 type TripWithShipments = TripRow & { shipments: ShipmentRow[] };
 
-// ---------- Shipment services ----------
+// ---------- Helpers ----------
 
-export async function getShipments() {
-  const { data, error } = await supabase
-    .from("shipments")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data as ShipmentRow[];
+function mapTripWithShipment(row: TripWithShipments, shipment: ShipmentRow): Trip {
+  return {
+    id: row.id,
+    shipmentId: shipment.id,
+    name: row.trip_name || shipment.shipment_name,
+    productId: shipment.cargo_category,
+    cargoKg: shipment.cargo_kg,
+    durationHours: shipment.duration_hours,
+    recommendedIceKg: shipment.recommended_ice_kg ?? 0,
+    iceRemainingKg: shipment.ice_remaining_kg ?? 0,
+    meltRateKgPerHr: shipment.melt_rate_kg_per_hr ?? 0,
+    safeDurationHours: shipment.safe_duration_hours ?? 0,
+    status: row.status,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    createdAt: row.created_at,
+    notes: shipment.notes,
+  };
 }
 
-export async function getShipment(id: number) {
-  const { data, error } = await supabase
-    .from("shipments")
-    .select("*")
-    .eq("id", id)
-    .single();
-  if (error) throw error;
-  return data as ShipmentRow;
-}
-
-export async function createShipment(input: ShipmentInsert) {
-  const { data, error } = await supabase
-    .from("shipments")
-    .insert(input)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as ShipmentRow;
-}
-
-export async function updateShipment(id: number, input: ShipmentUpdate) {
-  const { data, error } = await supabase
-    .from("shipments")
-    .update(input)
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as ShipmentRow;
-}
-
-export async function deleteShipment(id: number) {
-  const { error } = await supabase.from("shipments").delete().eq("id", id);
-  if (error) throw error;
-}
+// ---------- Status transitions (shipment + trip coordination) ----------
 
 export async function updateShipmentStatus(id: number, status: TripStatus) {
   const { data: shipment } = await supabase
@@ -111,91 +82,20 @@ export async function updateShipmentStatus(id: number, status: TripStatus) {
   }
 }
 
-// ---------- Trip services ----------
-
-export async function getTrips() {
-  const { data, error } = await supabase
-    .from("trips")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data as TripRow[];
-}
-
-export async function getPlannedTrips() {
-  const { data, error } = await supabase
-    .from("trips")
-    .select("*")
-    .eq("status", "planned")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data as TripRow[];
-}
-
-export async function getTrip(id: number) {
-  const { data, error } = await supabase
-    .from("trips")
-    .select("*")
-    .eq("id", id)
-    .single();
-  if (error) throw error;
-  return data as TripRow;
-}
-
-export async function createTrip(input: Omit<TripInsert, "updated_at">) {
-  const payload = {
-    ...input,
-    updated_at: new Date().toISOString(),
-  };
-  const { data, error } = await supabase
-    .from("trips")
-    .insert(payload)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as TripRow;
-}
-
-export async function updateTrip(id: number, input: TripUpdate) {
-  const { data, error } = await supabase
-    .from("trips")
-    .update({
-      ...input,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as TripRow;
-}
-
-export async function updateTripStatus(id: number, status: TripStatus) {
-  const now = new Date().toISOString();
-  const patch: TripUpdate & { started_at?: string; completed_at?: string } = {
-    status,
-    updated_at: now,
-  };
-
-  if (status === "active") {
-    patch.started_at = now;
-  } else if (status === "completed" || status === "cancelled") {
-    patch.completed_at = now;
+export async function updateShipmentTrip(shipmentId: number, tripId: number, isPlanned = false, status?: TripStatus) {
+  const updateData: Record<string, unknown> = { trip_id: tripId, is_planned: isPlanned };
+  if (status) {
+    updateData.status = status;
   }
-
-  const { data, error } = await supabase
-    .from("trips")
-    .update(patch)
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as TripRow;
-}
-
-export async function deleteTrip(id: number) {
-  const { error } = await supabase.from("trips").delete().eq("id", id);
-  if (error) throw error;
+  const { error } = await supabase
+    .from("shipments")
+    .update(updateData)
+    .eq("id", shipmentId);
+  if (error) {
+    console.error("updateShipmentTrip failed:", error);
+    throw error;
+  }
+  console.log("updateShipmentTrip OK: shipment", shipmentId, "-> trip", tripId, "isPlanned:", isPlanned);
 }
 
 export async function completeTrip(id: number) {
@@ -236,27 +136,7 @@ export async function startSoloShipment(shipmentId: number, shipmentName: string
   return trip;
 }
 
-// ---------- Combined view ----------
-
-function mapTripWithShipment(row: TripWithShipments, shipment: ShipmentRow): Trip {
-  return {
-    id: row.id,
-    shipmentId: shipment.id,
-    name: row.trip_name || shipment.shipment_name,
-    productId: shipment.cargo_category,
-    cargoKg: shipment.cargo_kg,
-    durationHours: shipment.duration_hours,
-    recommendedIceKg: shipment.recommended_ice_kg ?? 0,
-    iceRemainingKg: shipment.ice_remaining_kg ?? 0,
-    meltRateKgPerHr: shipment.melt_rate_kg_per_hr ?? 0,
-    safeDurationHours: shipment.safe_duration_hours ?? 0,
-    status: row.status,
-    startedAt: row.started_at,
-    completedAt: row.completed_at,
-    createdAt: row.created_at,
-    notes: shipment.notes,
-  };
-}
+// ---------- Combined views ----------
 
 export async function getTripsWithShipments() {
   const [{ data: trips }, { data: allShipments }] = await Promise.all([
@@ -360,22 +240,6 @@ export async function getTripWithShipmentsById(tripId: number): Promise<Trip | n
   return shipment ? mapTripWithShipment(row, shipment) : null;
 }
 
-export async function updateShipmentTrip(shipmentId: number, tripId: number, isPlanned = false, status?: TripStatus) {
-  const updateData: Record<string, unknown> = { trip_id: tripId, is_planned: isPlanned };
-  if (status) {
-    updateData.status = status;
-  }
-  const { error } = await supabase
-    .from("shipments")
-    .update(updateData)
-    .eq("id", shipmentId);
-  if (error) {
-    console.error("updateShipmentTrip failed:", error);
-    throw error;
-  }
-  console.log("updateShipmentTrip OK: shipment", shipmentId, "-> trip", tripId, "isPlanned:", isPlanned);
-}
-
 export async function getShipmentsByTripId(tripId: number): Promise<ShipmentRow[]> {
   const { data, error } = await supabase
     .from("shipments")
@@ -413,6 +277,8 @@ export async function getShipmentsWithTrips() {
     startedAt: s.trip?.started_at ?? null,
   }));
 }
+
+// ---------- Grouping ----------
 
 export async function createGroupedTrip(
   selectedTrips: Trip[],
