@@ -8,7 +8,7 @@ export interface ToastConfig {
 
 export function useToast() {
   const [toast, setToast] = useState<ToastConfig | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const show = useCallback((config: ToastConfig) => {
     setToast(config);

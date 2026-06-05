@@ -112,7 +112,7 @@ export function TripHeader({
         onPress={handleToggle}
         activeOpacity={0.7}
         style={{
-          backgroundColor: STATUS_CARD_BG[derivedStatus] ?? "white",
+          backgroundColor: "white",
           borderRadius: 12,
           borderTopLeftRadius: 12,
           borderTopRightRadius: 12,

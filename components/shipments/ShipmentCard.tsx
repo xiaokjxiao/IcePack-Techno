@@ -4,7 +4,7 @@ import type { CargoCategory, RiskLevel, TripStatus } from "@/lib/icepack/data";
 import { getProduct, liveStateFor } from "@/lib/icepack/data";
 import { ProductIcon } from "@/components/ui/ProductIcon";
 import { router } from "expo-router";
-import { Check } from "lucide-react-native";
+import { Check, Layers } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
 
 export interface ShipmentView {
@@ -138,11 +138,13 @@ export function ShipmentCard({
   selectable,
   selected,
   onToggleSelect,
+  onAssign,
 }: {
   shipment: ShipmentView;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: number) => void;
+  onAssign?: (id: number) => void;
 }) {
   const { isTablet } = useScreenDimensions();
   const fsBase = useResponsiveFontSize("base");
@@ -305,6 +307,30 @@ export function ShipmentCard({
             valueColor={statusCellColor}
           />
         </View>
+
+        {onAssign && !shipment.tripId && isPlanned && (
+          <TouchableOpacity
+            onPress={() => onAssign(shipment.id)}
+            activeOpacity={0.7}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              marginTop: 12,
+              paddingVertical: 8,
+              borderRadius: 8,
+              backgroundColor: "#f4f8fa",
+              borderWidth: 1,
+              borderColor: "#e2e8f0",
+            }}
+          >
+            <Layers size={14} color="#587a94" strokeWidth={1.5} />
+            <Text style={{ fontSize: fsXs, fontWeight: "600", color: "#587a94" }}>
+              Assign to Trip
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </>
   );

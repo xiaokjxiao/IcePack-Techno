@@ -9,7 +9,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft, Trash2 } from "lucide-react-native";
+import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft, Trash2, Package, FileText, Thermometer, Calculator } from "lucide-react-native";
 import { EditableField } from "@/components/ui/EditableField";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast, ToastBanner } from "@/components/ui/toast";
@@ -42,11 +42,13 @@ function Info({
   value,
   strong,
   accent,
+  alignTop,
 }: {
   label: string;
   value: string;
   strong?: boolean;
   accent?: boolean;
+  alignTop?: boolean;
 }) {
   const baseSize = useResponsiveFontSize("sm");
   return (
@@ -54,7 +56,7 @@ function Info({
       style={{
         flexDirection: "row",
         justifyContent: "space-between",
-        alignItems: "center",
+        alignItems: alignTop ? "flex-start" : "center",
       }}
     >
       <Text style={{ fontSize: baseSize, color: "#0b2540" }}>{label}</Text>
@@ -63,6 +65,8 @@ function Info({
           fontSize: strong ? baseSize * 1.1 : baseSize,
           fontWeight: "600",
           color: accent ? "#14b8a6" : strong ? "#0b2540" : "#0b2540",
+          flexShrink: 1,
+          textAlign: "right",
         }}
       >
         {value}
@@ -341,27 +345,29 @@ export default function ShipmentDetailScreen() {
             elevation: 2,
           }}
         >
-          <Text
-            style={{
-              fontSize: labelSize * 0.9,
-              fontWeight: "600",
-              color: "#587a94",
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            Cargo Info
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <Package size={16} color="#587a94" strokeWidth={1.5} />
+            <Text
+              style={{
+                fontSize: labelSize * 0.9,
+                fontWeight: "600",
+                color: "#587a94",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              Cargo Info
+            </Text>
+          </View>
           <View style={{ gap: 10 }}>
             <Info label="Cargo" value={`${shipment.cargo_kg} kg`} />
             <Info label="Duration" value={`${shipment.duration_hours} hrs`} />
 
             {shipment.origin_location && (
-              <Info label="Origin" value={shipment.origin_location} />
+              <Info label="Origin" value={shipment.origin_location} alignTop />
             )}
             {shipment.destination_location && (
-              <Info label="Destination" value={shipment.destination_location} />
+              <Info label="Destination" value={shipment.destination_location} alignTop />
             )}
           </View>
         </View>
@@ -382,18 +388,20 @@ export default function ShipmentDetailScreen() {
               elevation: 2,
             }}
           >
-            <Text
-              style={{
-                fontSize: labelSize * 0.9,
-                fontWeight: "600",
-                color: "#587a94",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-                marginBottom: 12,
-              }}
-            >
-              Customs & Logistics
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <FileText size={16} color="#587a94" strokeWidth={1.5} />
+              <Text
+                style={{
+                  fontSize: labelSize * 0.9,
+                  fontWeight: "600",
+                  color: "#587a94",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                Customs & Logistics
+              </Text>
+            </View>
             <View style={{ gap: 10 }}>
               {shipment.hs_code && (
                 <Info label="HS Code" value={shipment.hs_code} />
@@ -433,18 +441,20 @@ export default function ShipmentDetailScreen() {
             elevation: 2,
           }}
         >
-          <Text
-            style={{
-              fontSize: labelSize * 0.9,
-              fontWeight: "600",
-              color: "#587a94",
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            Storage Profile
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <Thermometer size={16} color="#587a94" strokeWidth={1.5} />
+            <Text
+              style={{
+                fontSize: labelSize * 0.9,
+                fontWeight: "600",
+                color: "#587a94",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              Storage Profile
+            </Text>
+          </View>
           <View style={{ gap: 10 }}>
             <Info label="Type" value={profile.label} />
             <Info label="Range" value={profile.range} />
@@ -471,18 +481,20 @@ export default function ShipmentDetailScreen() {
               elevation: 2,
             }}
           >
-            <Text
-              style={{
-                fontSize: labelSize * 0.9,
-                fontWeight: "600",
-                color: "#587a94",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-                marginBottom: 12,
-              }}
-            >
-              Ice Calculation
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <Calculator size={16} color="#587a94" strokeWidth={1.5} />
+              <Text
+                style={{
+                  fontSize: labelSize * 0.9,
+                  fontWeight: "600",
+                  color: "#587a94",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                Ice Calculation
+              </Text>
+            </View>
             <View style={{ gap: 10 }}>
               <Info label="Recommended Ice" value={`${shipment.recommended_ice_kg} kg`} strong />
               <Info label="Melt Rate" value={`${shipment.melt_rate_kg_per_hr} kg/hr`} />

@@ -122,6 +122,16 @@ export async function getTrips() {
   return data as TripRow[];
 }
 
+export async function getPlannedTrips() {
+  const { data, error } = await supabase
+    .from("trips")
+    .select("*")
+    .eq("status", "planned")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as TripRow[];
+}
+
 export async function getTrip(id: number) {
   const { data, error } = await supabase
     .from("trips")

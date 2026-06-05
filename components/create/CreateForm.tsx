@@ -15,6 +15,7 @@ import {
 import { createShipment, createTrip } from "@/lib/icepack/services";
 import { useResponsiveFontSize } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
+import { LocationAutocomplete } from "@/components/ui/LocationAutocomplete";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
 const STEPS = [
@@ -96,6 +97,7 @@ export function CreateForm() {
       }
       await createShipment(shipmentInput as any);
 
+      setStep(1);
       setProductId(PRODUCT_CATEGORIES[0].id);
       setShipmentName("");
       setCargoKg("");
@@ -247,22 +249,20 @@ export function CreateForm() {
             <View style={{ gap: 12 }}>
               <View>
                 {fieldLabel("Origin")}
-                <TextInput
+                <LocationAutocomplete
                   value={originLocation}
-                  onChangeText={setOriginLocation}
+                  onValueChange={setOriginLocation}
+                  onLocationSelect={() => {}}
                   placeholder="City or location"
-                  placeholderTextColor="#9bb4c7"
-                  style={inputStyle}
                 />
               </View>
               <View>
                 {fieldLabel("Destination")}
-                <TextInput
+                <LocationAutocomplete
                   value={destinationLocation}
-                  onChangeText={setDestinationLocation}
+                  onValueChange={setDestinationLocation}
+                  onLocationSelect={() => {}}
                   placeholder="City or location"
-                  placeholderTextColor="#9bb4c7"
-                  style={inputStyle}
                 />
               </View>
             </View>
