@@ -109,7 +109,7 @@ export function TripHeader({
           elevation: isExpanded ? 0 : 1,
         }}
       >
-        <View style={{ paddingVertical: 14, paddingHorizontal: 12, gap: 12 }}>
+        <View style={{ paddingVertical: 10, paddingHorizontal: 12, gap: 8 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
             <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={{ fontSize: baseSize, fontWeight: "700", color: "#0f1419", marginBottom: 2 }} numberOfLines={1}>
@@ -148,7 +148,7 @@ export function TripHeader({
             </View>
           </View>
 
-          <View style={{ flexDirection: "row", gap: 12 }}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: xsSize, color: "#94a3b8", fontWeight: "600", marginBottom: 2, textTransform: "uppercase" }}>
                 Items
@@ -210,8 +210,8 @@ export function TripHeader({
             borderTopWidth: 0,
             borderColor: "#f0f4f8",
             paddingHorizontal: 16,
-            paddingTop: 12,
-            paddingBottom: 16,
+            paddingTop: 8,
+            paddingBottom: 12,
             shadowColor: "#0b2540",
             shadowOpacity: 0.05,
             shadowRadius: 8,
@@ -220,23 +220,25 @@ export function TripHeader({
           }}
         >
           {shipments.length > 0 && (
-            <View style={{ marginBottom: 12 }}>
+            <View style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: xsSize, fontWeight: "600", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Items in this trip
               </Text>
             </View>
           )}
 
-          <View style={{ gap: 10, marginBottom: 12 }}>
-            {shipments.map((s) => (
-              <ShipmentCard key={s.id} shipment={s} />
-            ))}
-          </View>
+          {shipments.length > 0 && (
+            <View style={{ gap: 8, marginBottom: 8 }}>
+              {shipments.map((s) => (
+                <ShipmentCard key={s.id} shipment={s} />
+              ))}
+            </View>
+          )}
 
           {shipments.length === 0 && (
-            <View style={{ alignItems: "center", paddingVertical: 24 }}>
-              <Package size={32} color="#cbd5e1" strokeWidth={1.5} />
-              <Text style={{ fontSize: smSize, color: "#cbd5e1", marginTop: 8, fontWeight: "500" }}>
+            <View style={{ alignItems: "center", paddingVertical: 16 }}>
+              <Package size={28} color="#cbd5e1" strokeWidth={1.5} />
+              <Text style={{ fontSize: smSize, color: "#cbd5e1", marginTop: 6, fontWeight: "500" }}>
                 No items yet
               </Text>
             </View>
@@ -250,8 +252,8 @@ export function TripHeader({
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              paddingVertical: 12,
-              paddingHorizontal: 16,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
               borderRadius: 8,
               backgroundColor: "#f0f4f8",
               borderWidth: 1,

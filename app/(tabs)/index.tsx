@@ -48,6 +48,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { isTablet, isLandscape } = useScreenDimensions();
   const titleFontSize = useResponsiveFontSize("3xl");
+  const sectionTitleSize = useResponsiveFontSize("lg");
   const subtitleFontSize = useResponsiveFontSize("xs");
   const horizontalPadding = useResponsiveSpacing("lg");
   const verticalPadding = useResponsiveSpacing("lg");
@@ -130,8 +131,8 @@ export default function HomeScreen() {
   }, [recentActive]);
 
   const isFourCol = isLandscape && !isTablet;
-  const avatarSize = isTablet ? 48 : 40;
-  const innerAvatarSize = isTablet ? 16 : 12;
+  const avatarSize = isTablet ? 40 : 32;
+  const innerAvatarSize = isTablet ? 14 : 10;
 
   return (
     <ScrollView
@@ -145,8 +146,8 @@ export default function HomeScreen() {
         style={{
           paddingLeft: horizontalPadding,
           paddingRight: horizontalPadding,
-          paddingBottom: verticalPadding,
-          paddingTop: insets.top + 16,
+          paddingBottom: verticalPadding * 0.7,
+          paddingTop: insets.top + 12,
           borderBottomLeftRadius: 24,
           borderBottomRightRadius: 24,
         }}
@@ -156,7 +157,7 @@ export default function HomeScreen() {
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: verticalPadding,
+            marginBottom: verticalPadding * 0.6,
           }}
         >
           <View style={{ gap: 4 }}>
@@ -260,19 +261,19 @@ export default function HomeScreen() {
           {error}
         </Text>
       ) : (
-        <View style={{ paddingHorizontal: horizontalPadding, paddingTop: verticalPadding }}>
+        <View style={{ paddingHorizontal: horizontalPadding, paddingTop: verticalPadding * 0.6 }}>
           <View>
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 8,
+                marginBottom: 6,
               }}
             >
               <Text
                 style={{
-                  fontSize: gapSize,
+                  fontSize: sectionTitleSize,
                   fontWeight: "600",
                   color: "#0b2540",
                 }}
@@ -312,7 +313,7 @@ export default function HomeScreen() {
                 No active shipments
               </Text>
             ) : (
-              <View style={{ gap: 12, marginBottom: 24 }}>
+              <View style={{ gap: 10, marginBottom: 16 }}>
                 {activeGrouped.groups.map(([tripId, groupShipments]) => {
                   const trip = toTrip(groupShipments[0]);
                   return (

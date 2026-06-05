@@ -14,9 +14,9 @@ export function StatCard({
   accent?: boolean;
 }) {
   const labelFontSize = useResponsiveFontSize("xs");
-  const valueFontSize = useResponsiveFontSize("2xl");
-  const padding = useResponsiveSpacing("md");
-  const marginBottom = useResponsiveSpacing("sm");
+  const valueFontSize = useResponsiveFontSize("lg");
+  const padding = useResponsiveSpacing("sm");
+  const marginBottom = useResponsiveSpacing("sm") * 0.5;
 
   return (
     <View
