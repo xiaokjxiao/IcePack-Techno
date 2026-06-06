@@ -17,6 +17,7 @@ import { SortFilterModal } from "@/components/ui/SortFilterModal";
 import { SelectModeBanner } from "@/components/shipments/SelectModeBanner";
 import { GroupTripModal } from "@/components/shipments/GroupTripModal";
 import { AssignTripModal } from "@/components/shipments/AssignTripModal";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
@@ -40,6 +41,8 @@ export default function ShipmentsScreen() {
   const [sortBy, setSortBy] = useState<"date" | "name">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [sortOpen, setSortOpen] = useState(false);
+
+  const { isTracker } = useUserRole();
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -232,7 +235,7 @@ export default function ShipmentsScreen() {
               {allShipments.filter((s) => s.shipmentStatus === "completed").length} completed
             </Text>
           </View>
-          {!selectMode && (
+          {!isTracker && !selectMode && (
             <TouchableOpacity
               onPress={() => {
                 if (plannedShipments.length < 2) {
@@ -271,7 +274,7 @@ export default function ShipmentsScreen() {
               </Text>
             </TouchableOpacity>
           )}
-          {selectMode && (
+          {!isTracker && selectMode && (
             <TouchableOpacity
               onPress={() => {
                 setSelectMode(false);
@@ -301,7 +304,7 @@ export default function ShipmentsScreen() {
         </View>
       </LinearGradient>
 
-      {selectMode ? (
+      {!isTracker && selectMode ? (
         <SelectModeBanner
           selectedCount={selectedIds.size}
           totalPlanned={plannedShipments.length}
@@ -352,7 +355,7 @@ export default function ShipmentsScreen() {
         labelSize={labelSize}
       />
 
-      {selectMode && selectedIds.size >= 2 && (
+      {!isTracker && selectMode && selectedIds.size >= 2 && (
         <TouchableOpacity
           onPress={handleGroup}
           activeOpacity={0.8}
@@ -401,15 +404,15 @@ export default function ShipmentsScreen() {
               <ShipmentCard
                 key={shipment.id}
                 shipment={shipment}
-                selectable={selectMode && shipment.isPlanned}
+                selectable={!isTracker && selectMode && shipment.isPlanned}
                 selected={selectedIds.has(shipment.id)}
                 onToggleSelect={
-                  selectMode && shipment.isPlanned
+                  !isTracker && selectMode && shipment.isPlanned
                     ? handleToggleSelect
                     : undefined
                 }
                 onAssign={
-                  !selectMode && shipment.isPlanned && !shipment.tripId
+                  !isTracker && !selectMode && shipment.isPlanned && !shipment.tripId
                     ? handleOpenAssign
                     : undefined
                 }
@@ -419,29 +422,33 @@ export default function ShipmentsScreen() {
         )}
       </ScrollView>
 
-      <GroupTripModal
-        visible={showGroupModal}
-        selectedCount={selectedIds.size}
-        groupName={groupName}
-        onGroupNameChange={setGroupName}
-        groupLoading={groupLoading}
-        onCreateStart={() => handleCreateGroupedTrip(true)}
-        onSavePlanned={() => handleCreateGroupedTrip(false)}
-        onCancel={handleCancelGroup}
-        titleSize={titleSize}
-        labelSize={labelSize}
-      />
+      {!isTracker && (
+        <>
+          <GroupTripModal
+            visible={showGroupModal}
+            selectedCount={selectedIds.size}
+            groupName={groupName}
+            onGroupNameChange={setGroupName}
+            groupLoading={groupLoading}
+            onCreateStart={() => handleCreateGroupedTrip(true)}
+            onSavePlanned={() => handleCreateGroupedTrip(false)}
+            onCancel={handleCancelGroup}
+            titleSize={titleSize}
+            labelSize={labelSize}
+          />
 
-      <AssignTripModal
-        visible={showAssignModal}
-        onClose={() => setShowAssignModal(false)}
-        plannedTrips={plannedTrips}
-        selectedTripId={selectedTripId}
-        onSelectTrip={setSelectedTripId}
-        onAssign={handleAssignToTrip}
-        assignLoading={assignLoading}
-        labelSize={labelSize}
-      />
+          <AssignTripModal
+            visible={showAssignModal}
+            onClose={() => setShowAssignModal(false)}
+            plannedTrips={plannedTrips}
+            selectedTripId={selectedTripId}
+            onSelectTrip={setSelectedTripId}
+            onAssign={handleAssignToTrip}
+            assignLoading={assignLoading}
+            labelSize={labelSize}
+          />
+        </>
+      )}
     </View>
   );
 }

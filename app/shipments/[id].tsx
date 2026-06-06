@@ -13,6 +13,7 @@ import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft, Trash2, Package, FileT
 import { EditableField } from "@/components/ui/EditableField";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast, ToastBanner } from "@/components/ui/toast";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
@@ -88,6 +89,7 @@ export default function ShipmentDetailScreen() {
   const [shipment, setShipment] = useState<ShipmentRow | null>(null);
   const [trip, setTrip] = useState<TripRow | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const { isTracker } = useUserRole();
   const { toast, show: showToast } = useToast();
   const [dialog, setDialog] = useState<{
     visible: boolean;
@@ -263,30 +265,38 @@ export default function ShipmentDetailScreen() {
               Back
             </Text>
           </TouchableOpacity>
-          <View style={{ flexDirection: "row", gap: 16 }}>
-            <TouchableOpacity
-              onPress={promptDelete}
-              activeOpacity={0.7}
-              style={{ padding: 4 }}
-            >
-              <Trash2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
-            </TouchableOpacity>
-          </View>
+          {!isTracker && (
+            <View style={{ flexDirection: "row", gap: 16 }}>
+              <TouchableOpacity
+                onPress={promptDelete}
+                activeOpacity={0.7}
+                style={{ padding: 4 }}
+              >
+                <Trash2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <ProductIcon name={product.icon} size={titleSize} color="white" />
-          <View style={{ flex: 1 }}>
-            <EditableField
-              value={shipment.shipment_name}
-              onSave={handleSaveName}
-              fontSize={titleSize}
-            />
-            <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>
-              {product.label}
-            </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <ProductIcon name={product.icon} size={titleSize} color="white" />
+            <View style={{ flex: 1 }}>
+              {isTracker ? (
+                <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}>
+                  {shipment.shipment_name}
+                </Text>
+              ) : (
+                <EditableField
+                  value={shipment.shipment_name}
+                  onSave={handleSaveName}
+                  fontSize={titleSize}
+                />
+              )}
+              <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>
+                {product.label}
+              </Text>
+            </View>
           </View>
-        </View>
 
         <View
           style={{
@@ -535,120 +545,28 @@ export default function ShipmentDetailScreen() {
 
         {/* Action Buttons */}
         <View style={{ paddingBottom: 20, gap: 10 }}>
-          {!trip && (
-            <View
-              style={{
-                backgroundColor: "#f4f8fa",
-                borderRadius: 12,
-                padding: 14,
-                alignItems: "center",
-                borderWidth: 1,
-                borderColor: "#e8eef3",
-              }}
-            >
-              <Text style={{ fontSize: labelSize, color: "#587a94", textAlign: "center" }}>
-                This shipment is not linked to any trip. Group it from the Shipments list.
-              </Text>
-            </View>
-          )}
-
-          {shipment.status === "planned" && (
+          {isTracker && shipment.status === "active" && (
             <TouchableOpacity
-              onPress={() => handleStatusChange("active")}
-              disabled={actionLoading}
+              onPress={() => router.push(`/monitor/${shipment.id}` as any)}
               activeOpacity={0.85}
               style={{
                 paddingVertical: 14,
                 borderRadius: 12,
-                backgroundColor: actionLoading ? "#94c5e8" : "#14b8a6",
+                backgroundColor: "#0b2540",
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
               }}
             >
-              {actionLoading ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Play size={18} color="white" strokeWidth={2} />
-              )}
+              <Gauge size={18} color="#14b8a6" strokeWidth={2} />
               <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
-                {actionLoading ? "Starting..." : "Start Shipment"}
+                Live Monitor
               </Text>
             </TouchableOpacity>
           )}
 
-          {shipment.status === "active" && (
-            <>
-              <TouchableOpacity
-                onPress={promptComplete}
-                disabled={actionLoading}
-                activeOpacity={0.85}
-                style={{
-                  paddingVertical: 14,
-                  borderRadius: 12,
-                  backgroundColor: actionLoading ? "#94c5e8" : "#1a8ad4",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                {actionLoading ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <CheckCircle2 size={18} color="white" strokeWidth={2} />
-                )}
-                <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
-                  {actionLoading ? "Completing..." : "Complete Shipment"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push(`/monitor/${shipment.id}` as any)}
-                activeOpacity={0.85}
-                style={{
-                  paddingVertical: 14,
-                  borderRadius: 12,
-                  backgroundColor: "#0b2540",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                <Gauge size={18} color="#14b8a6" strokeWidth={2} />
-                <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
-                  Live Monitor
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {shipment.status !== "completed" && shipment.status !== "cancelled" && (
-            <TouchableOpacity
-              onPress={promptCancel}
-              disabled={actionLoading}
-              activeOpacity={0.85}
-              style={{
-                paddingVertical: 14,
-                borderRadius: 12,
-                backgroundColor: "#fff",
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                borderWidth: 1,
-                borderColor: "#e8eef3",
-              }}
-            >
-              <XCircle size={18} color="#ef4444" strokeWidth={2} />
-              <Text style={{ fontSize: labelSize, fontWeight: "600", color: "#ef4444" }}>
-                Cancel Shipment
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {shipment.status === "completed" && (
+          {isTracker && shipment.status === "completed" && (
             <View
               style={{
                 backgroundColor: "#f0fdf4",
@@ -665,7 +583,7 @@ export default function ShipmentDetailScreen() {
             </View>
           )}
 
-          {shipment.status === "cancelled" && (
+          {isTracker && shipment.status === "cancelled" && (
             <View
               style={{
                 backgroundColor: "#fef2f2",
@@ -680,6 +598,157 @@ export default function ShipmentDetailScreen() {
                 Cancelled
               </Text>
             </View>
+          )}
+
+          {!isTracker && (
+            <>
+              {!trip && (
+                <View
+                  style={{
+                    backgroundColor: "#f4f8fa",
+                    borderRadius: 12,
+                    padding: 14,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "#e8eef3",
+                  }}
+                >
+                  <Text style={{ fontSize: labelSize, color: "#587a94", textAlign: "center" }}>
+                    This shipment is not linked to any trip. Group it from the Shipments list.
+                  </Text>
+                </View>
+              )}
+
+              {shipment.status === "planned" && (
+                <TouchableOpacity
+                  onPress={() => handleStatusChange("active")}
+                  disabled={actionLoading}
+                  activeOpacity={0.85}
+                  style={{
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    backgroundColor: actionLoading ? "#94c5e8" : "#14b8a6",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  {actionLoading ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Play size={18} color="white" strokeWidth={2} />
+                  )}
+                  <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
+                    {actionLoading ? "Starting..." : "Start Shipment"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {shipment.status === "active" && (
+                <>
+                  <TouchableOpacity
+                    onPress={promptComplete}
+                    disabled={actionLoading}
+                    activeOpacity={0.85}
+                    style={{
+                      paddingVertical: 14,
+                      borderRadius: 12,
+                      backgroundColor: actionLoading ? "#94c5e8" : "#1a8ad4",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    {actionLoading ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <CheckCircle2 size={18} color="white" strokeWidth={2} />
+                    )}
+                    <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
+                      {actionLoading ? "Completing..." : "Complete Shipment"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => router.push(`/monitor/${shipment.id}` as any)}
+                    activeOpacity={0.85}
+                    style={{
+                      paddingVertical: 14,
+                      borderRadius: 12,
+                      backgroundColor: "#0b2540",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Gauge size={18} color="#14b8a6" strokeWidth={2} />
+                    <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
+                      Live Monitor
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {shipment.status !== "completed" && shipment.status !== "cancelled" && (
+                <TouchableOpacity
+                  onPress={promptCancel}
+                  disabled={actionLoading}
+                  activeOpacity={0.85}
+                  style={{
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    backgroundColor: "#fff",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    borderWidth: 1,
+                    borderColor: "#e8eef3",
+                  }}
+                >
+                  <XCircle size={18} color="#ef4444" strokeWidth={2} />
+                  <Text style={{ fontSize: labelSize, fontWeight: "600", color: "#ef4444" }}>
+                    Cancel Shipment
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {shipment.status === "completed" && (
+                <View
+                  style={{
+                    backgroundColor: "#f0fdf4",
+                    borderRadius: 12,
+                    padding: 14,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "#bbf7d0",
+                  }}
+                >
+                  <Text style={{ fontSize: labelSize, color: "#16a34a", fontWeight: "600" }}>
+                    Delivered
+                  </Text>
+                </View>
+              )}
+
+              {shipment.status === "cancelled" && (
+                <View
+                  style={{
+                    backgroundColor: "#fef2f2",
+                    borderRadius: 12,
+                    padding: 14,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "#fecaca",
+                  }}
+                >
+                  <Text style={{ fontSize: labelSize, color: "#dc2626", fontWeight: "600" }}>
+                    Cancelled
+                  </Text>
+                </View>
+              )}
+            </>
           )}
         </View>
       </View>

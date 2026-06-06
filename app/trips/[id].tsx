@@ -14,6 +14,7 @@ import { EditableField } from "@/components/ui/EditableField";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast, ToastBanner } from "@/components/ui/toast";
 import { ShipmentCard, type ShipmentView } from "@/components/shipments/ShipmentCard";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
@@ -65,6 +66,7 @@ export default function TripDetailScreen() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [allShipments, setAllShipments] = useState<ShipmentRow[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
+  const { isTracker } = useUserRole();
   const { toast, show: showToast } = useToast();
   const [dialog, setDialog] = useState<{
     visible: boolean;
@@ -273,21 +275,29 @@ export default function TripDetailScreen() {
               Back
             </Text>
           </TouchableOpacity>
-          <View style={{ flexDirection: "row", gap: 16 }}>
-            <TouchableOpacity
-              onPress={promptDelete}
-              activeOpacity={0.7}
-              style={{ padding: 4 }}
-            >
-              <Trash2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
-            </TouchableOpacity>
-          </View>
+          {!isTracker && (
+            <View style={{ flexDirection: "row", gap: 16 }}>
+              <TouchableOpacity
+                onPress={promptDelete}
+                activeOpacity={0.7}
+                style={{ padding: 4 }}
+              >
+                <Trash2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-        <EditableField
-          value={trip.name}
-          onSave={handleSaveName}
-          fontSize={titleSize}
-        />
+        {isTracker ? (
+          <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}>
+            {trip.name}
+          </Text>
+        ) : (
+          <EditableField
+            value={trip.name}
+            onSave={handleSaveName}
+            fontSize={titleSize}
+          />
+        )}
         {allShipments.length > 1 && (
           <View
             style={{
@@ -333,86 +343,7 @@ export default function TripDetailScreen() {
 
         {/* Action Buttons */}
         <View style={{ paddingTop: 8, paddingBottom: 20, gap: 10 }}>
-          {trip.status === "planned" && (
-            <TouchableOpacity
-              onPress={handleStartTrip}
-              disabled={actionLoading}
-              activeOpacity={0.85}
-              style={{
-                paddingVertical: 14,
-                borderRadius: 12,
-                backgroundColor: actionLoading ? "#94c5e8" : "#14b8a6",
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-              }}
-            >
-              {actionLoading ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Play size={18} color="white" strokeWidth={2} />
-              )}
-              <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
-                {actionLoading ? "Starting..." : "Start Trip"}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {trip.status === "active" && (
-            <>
-              <TouchableOpacity
-                onPress={promptComplete}
-                disabled={actionLoading}
-                activeOpacity={0.85}
-                style={{
-                  paddingVertical: 14,
-                  borderRadius: 12,
-                  backgroundColor: actionLoading ? "#94c5e8" : "#1a8ad4",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                {actionLoading ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <CheckCircle2 size={18} color="white" strokeWidth={2} />
-                )}
-                <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
-                  {actionLoading ? "Completing..." : "Complete Trip"}
-                </Text>
-              </TouchableOpacity>
-
-            </>
-          )}
-
-          {trip.status !== "completed" && trip.status !== "cancelled" && (
-            <TouchableOpacity
-              onPress={promptCancel}
-              disabled={actionLoading}
-              activeOpacity={0.85}
-              style={{
-                paddingVertical: 14,
-                borderRadius: 12,
-                backgroundColor: "#fff",
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                borderWidth: 1,
-                borderColor: "#e8eef3",
-              }}
-            >
-              <XCircle size={18} color="#ef4444" strokeWidth={2} />
-              <Text style={{ fontSize: labelSize, fontWeight: "600", color: "#ef4444" }}>
-                Cancel Trip
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {trip.status === "completed" && (
+          {isTracker && trip.status === "completed" && (
             <View
               style={{
                 backgroundColor: "#f0fdf4",
@@ -429,7 +360,7 @@ export default function TripDetailScreen() {
             </View>
           )}
 
-          {trip.status === "cancelled" && (
+          {isTracker && trip.status === "cancelled" && (
             <View
               style={{
                 backgroundColor: "#fef2f2",
@@ -444,6 +375,122 @@ export default function TripDetailScreen() {
                 Cancelled
               </Text>
             </View>
+          )}
+
+          {!isTracker && (
+            <>
+              {trip.status === "planned" && (
+                <TouchableOpacity
+                  onPress={handleStartTrip}
+                  disabled={actionLoading}
+                  activeOpacity={0.85}
+                  style={{
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    backgroundColor: actionLoading ? "#94c5e8" : "#14b8a6",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  {actionLoading ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Play size={18} color="white" strokeWidth={2} />
+                  )}
+                  <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
+                    {actionLoading ? "Starting..." : "Start Trip"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {trip.status === "active" && (
+                <>
+                  <TouchableOpacity
+                    onPress={promptComplete}
+                    disabled={actionLoading}
+                    activeOpacity={0.85}
+                    style={{
+                      paddingVertical: 14,
+                      borderRadius: 12,
+                      backgroundColor: actionLoading ? "#94c5e8" : "#1a8ad4",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    {actionLoading ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <CheckCircle2 size={18} color="white" strokeWidth={2} />
+                    )}
+                    <Text style={{ fontSize: labelSize, fontWeight: "700", color: "white" }}>
+                      {actionLoading ? "Completing..." : "Complete Trip"}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {trip.status !== "completed" && trip.status !== "cancelled" && (
+                <TouchableOpacity
+                  onPress={promptCancel}
+                  disabled={actionLoading}
+                  activeOpacity={0.85}
+                  style={{
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    backgroundColor: "#fff",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    borderWidth: 1,
+                    borderColor: "#e8eef3",
+                  }}
+                >
+                  <XCircle size={18} color="#ef4444" strokeWidth={2} />
+                  <Text style={{ fontSize: labelSize, fontWeight: "600", color: "#ef4444" }}>
+                    Cancel Trip
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {trip.status === "completed" && (
+                <View
+                  style={{
+                    backgroundColor: "#f0fdf4",
+                    borderRadius: 12,
+                    padding: 14,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "#bbf7d0",
+                  }}
+                >
+                  <Text style={{ fontSize: labelSize, color: "#16a34a", fontWeight: "600" }}>
+                    Completed
+                  </Text>
+                </View>
+              )}
+
+              {trip.status === "cancelled" && (
+                <View
+                  style={{
+                    backgroundColor: "#fef2f2",
+                    borderRadius: 12,
+                    padding: 14,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "#fecaca",
+                  }}
+                >
+                  <Text style={{ fontSize: labelSize, color: "#dc2626", fontWeight: "600" }}>
+                    Cancelled
+                  </Text>
+                </View>
+              )}
+            </>
           )}
         </View>
       </View>

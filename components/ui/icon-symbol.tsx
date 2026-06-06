@@ -24,6 +24,7 @@ const MAPPING = {
   'gearshape.fill': 'settings',
   'plus': 'add',
   'shippingbox.fill': 'inventory',
+  'person.fill': 'person',
 } as IconMapping;
 
 /**

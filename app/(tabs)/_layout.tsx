@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
 import { Tabs } from "expo-router";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
+import { getCurrentUserRole } from "@/lib/auth";
+import type { UserRole } from "@/lib/auth";
 import "@/global.css";
 import {
   useResponsiveFontSize,
@@ -16,7 +19,6 @@ function useTabBarStyle() {
   const paddingBottom = useResponsiveSpacing("sm");
   const paddingTop = useResponsiveSpacing("sm");
 
-  // Responsive height calculation
   const baseHeight = 80;
   const tabletHeight = 88;
   const smallHeight = 72;
@@ -45,7 +47,18 @@ function useTabBarStyle() {
 }
 
 export default function TabLayout() {
+  const [role, setRole] = useState<UserRole | null>(null);
+
+  useEffect(() => {
+    getCurrentUserRole().then(setRole);
+  }, []);
+
+  return <TabLayoutInner role={role} />;
+}
+
+function TabLayoutInner({ role }: { role: UserRole | null }) {
   const { tabBarStyle, iconSize, tabBarLabelStyle } = useTabBarStyle();
+  const isTracker = role === "tracker";
 
   return (
     <Tabs
@@ -80,6 +93,7 @@ export default function TabLayout() {
         name="create"
         options={{
           title: "Create",
+          href: isTracker ? null : undefined,
           tabBarIcon: ({ color }: { color: string }) => (
             <IconSymbol size={iconSize} name="plus" color={color} />
           ),
@@ -95,11 +109,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="profile"
         options={{
-          title: "Settings",
+          title: "Profile",
           tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol size={iconSize} name="gearshape.fill" color={color} />
+            <IconSymbol size={iconSize} name="person.fill" color={color} />
           ),
         }}
       />

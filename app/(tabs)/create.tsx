@@ -2,6 +2,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-na
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { CreateForm } from "@/components/create/CreateForm";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   useResponsiveFontSize,
   useResponsiveSpacing,
@@ -12,6 +13,7 @@ export default function CreateScreen() {
   const titleSize = useResponsiveFontSize("2xl");
   const labelSize = useResponsiveFontSize("sm");
   const padding = useResponsiveSpacing("lg");
+  const { isTracker } = useUserRole();
 
   return (
     <KeyboardAvoidingView
@@ -49,7 +51,21 @@ export default function CreateScreen() {
         </LinearGradient>
 
         <View style={{ paddingHorizontal: padding, paddingTop: padding }}>
-          <CreateForm />
+          {isTracker ? (
+            <View
+              style={{
+                padding: 24,
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <Text style={{ fontSize: labelSize, color: "#587a94", textAlign: "center" }}>
+                You have read-only access. Only operators can create shipments.
+              </Text>
+            </View>
+          ) : (
+            <CreateForm />
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
