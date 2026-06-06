@@ -91,7 +91,7 @@ export function TempRangeCard({ profile }: TempRangeCardProps) {
         </View>
 
         <Text className={"font-bold " + (isTablet ? "text-sm" : "text-xs") + " " + cls.badge}>
-          {profile.minTemp}° - {profile.maxTemp}°C
+          {profile.minTemp}° to {profile.maxTemp}°C
         </Text>
       </View>
 

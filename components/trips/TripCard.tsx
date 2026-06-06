@@ -109,7 +109,7 @@ function Cell({
           fontSize: fsXs, 
           color: "#94a3b8", 
           fontWeight: "600", 
-          marginBottom: 2,
+          marginBottom: 1,
           textTransform: "uppercase",
           letterSpacing: 0.5
         }}
@@ -154,7 +154,6 @@ export function TripCard({
   const { isTablet } = useScreenDimensions();
   const fsBase = useResponsiveFontSize("base");
   const fsXs = useResponsiveFontSize("xs");
-  const fsSm = useResponsiveFontSize("sm");
   const product = getProduct(trip.productId);
   const live = liveStateFor(trip);
   const isActive = trip.status === "active";
@@ -168,10 +167,10 @@ export function TripCard({
     : { borderWidth: 1, borderColor: "#f0f4f8" };
 
   const headerRow = (
-    <View style={{ marginBottom: 8 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+    <View style={{ marginBottom: 2 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
         <View style={{ flex: 1, marginRight: 10 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Text 
               numberOfLines={1} 
               style={{ 
@@ -185,7 +184,7 @@ export function TripCard({
             </Text>
           </View>
           
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
             <Text style={{ fontSize: fsXs, color: "#64748b" }}>
               {product.label}
             </Text>
@@ -196,7 +195,7 @@ export function TripCard({
                   alignItems: "center", 
                   gap: 4, 
                   paddingHorizontal: 8, 
-                  paddingVertical: 4, 
+                  paddingVertical: 3, 
                   borderRadius: 6, 
                   backgroundColor: "#dbeafe",
                   borderWidth: 0.5,
@@ -216,21 +215,19 @@ export function TripCard({
               style={{ 
                 fontSize: fsXs * 0.9, 
                 color: "#64748b", 
-                marginTop: 4
+                marginTop: 2
               }}
             >
               Departed: {startedText}
             </Text>
           )}
         </View>
-
-        <StatusBadge status={trip.status} risk={isActive ? live.risk : undefined} />
       </View>
     </View>
   );
 
   const cellsRow = (
-    <View style={{ flexDirection: "row", gap: 12, borderTopWidth: 1, borderTopColor: "#f0f4f8", paddingTop: 8 }}>
+    <View style={{ flexDirection: "row", gap: 10, borderTopWidth: 1, borderTopColor: "#f0f4f8", paddingTop: 6 }}>
       <Cell
         label="Duration"
         value={isActive ? formatHours(live.elapsedHours) : `${trip.durationHours}h`}
@@ -266,7 +263,7 @@ export function TripCard({
   );
 
   const cardContent = (
-    <View style={{ paddingVertical: isTablet ? 18 : 14, paddingHorizontal: isTablet ? 16 : 12 }}>
+    <View style={{ paddingVertical: isTablet ? 14 : 10, paddingHorizontal: isTablet ? 14 : 10 }}>
       {headerRow}
       {cellsRow}
     </View>

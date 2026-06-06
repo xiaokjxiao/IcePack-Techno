@@ -215,8 +215,6 @@ export function ShipmentCard({
               ? "#64748b"
               : undefined;
 
-  const showRoute = shipment.originLocation || shipment.destinationLocation;
-
   const cardContent = (
     <>
       {/* Left rail */}
@@ -261,15 +259,6 @@ export function ShipmentCard({
                   </View>
                 )}
               </View>
-
-              {showRoute && (
-                <Text
-                  numberOfLines={1}
-                  style={{ fontSize: fsXs * 0.9, color: "#94a3b8", marginTop: 4 }}
-                >
-                  {shipment.originLocation ?? "?"} → {shipment.destinationLocation ?? "?"}
-                </Text>
-              )}
             </View>
 
             <StatusBadge status={shipment.shipmentStatus} risk={isActive && live ? live.risk : undefined} />

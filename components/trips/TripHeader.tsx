@@ -261,7 +261,7 @@ export function TripHeader({
             }}
           >
             <Text style={{ fontSize: smSize, fontWeight: "600", color: "#1a8ad4" }}>
-              View Trip Details
+              View Trip Details fssfd
             </Text>
             <ArrowRight size={16} color="#1a8ad4" strokeWidth={2.5} />
           </TouchableOpacity>

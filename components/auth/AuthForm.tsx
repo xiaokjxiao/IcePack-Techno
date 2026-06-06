@@ -95,33 +95,35 @@ export default function AuthForm({ mode, onSubmit, loading }: AuthFormProps) {
         </View>
       )}
 
-      <View style={styles.verticallySpaced}>
-        <Text style={[styles.label, { color: colors.icon }]}>Role</Text>
-        <View style={styles.roleRow}>
-          {ROLES.map((r) => (
-            <TouchableOpacity
-              key={r.value}
-              style={[
-                styles.roleButton,
-                { borderColor: colors.border },
-                role === r.value && { backgroundColor: colors.tint, borderColor: colors.tint },
-              ]}
-              onPress={() => setRole(r.value)}
-              disabled={isSubmitting}
-            >
-              <Text
+      {mode === "register" && (
+        <View style={styles.verticallySpaced}>
+          <Text style={[styles.label, { color: colors.icon }]}>Role</Text>
+          <View style={styles.roleRow}>
+            {ROLES.map((r) => (
+              <TouchableOpacity
+                key={r.value}
                 style={[
-                  styles.roleButtonText,
-                  { color: colors.text },
-                  role === r.value && { color: "#fff" },
+                  styles.roleButton,
+                  { borderColor: colors.border },
+                  role === r.value && { backgroundColor: colors.tint, borderColor: colors.tint },
                 ]}
+                onPress={() => setRole(r.value)}
+                disabled={isSubmitting}
               >
-                {r.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.roleButtonText,
+                    { color: colors.text },
+                    role === r.value && { color: "#fff" },
+                  ]}
+                >
+                  {r.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <TouchableOpacity

@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, Link } from "expo-router";
-import { ArrowRight } from "lucide-react-native";
+import { ArrowRight, Gauge } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatCard } from "@/components/trips/StatCard";
@@ -15,6 +15,7 @@ import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 import type { Trip } from "@/lib/icepack/data";
 import { liveStateFor } from "@/lib/icepack/data";
 import { getShipmentsWithTrips } from "@/lib/icepack/services";
+import { getCurrentUser } from "@/lib/auth";
 
 function toTrip(s: ShipmentView): Trip {
   return {
@@ -57,6 +58,14 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shipments, setShipments] = useState<ShipmentView[]>([]);
+  const [userName, setUserName] = useState("Captain");
+
+  useEffect(() => {
+    getCurrentUser().then(({ user }) => {
+      const name = user?.user_metadata?.full_name || user?.email?.split("@")[0];
+      if (name) setUserName(name);
+    });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -170,16 +179,18 @@ export default function HomeScreen() {
                 letterSpacing: 1.2,
               }}
             >
-              Welcome aboard
+              Welcome aboard,
             </Text>
             <Text
               style={{
                 fontSize: titleFontSize,
                 fontWeight: "700",
                 color: "white",
+                textTransform: "uppercase",
+                letterSpacing: 1.2,
               }}
             >
-              Captain
+              {userName}
             </Text>
           </View>
           <View
@@ -261,59 +272,91 @@ export default function HomeScreen() {
           {error}
         </Text>
       ) : (
-        <View style={{ paddingHorizontal: horizontalPadding, paddingTop: verticalPadding * 0.6 }}>
+        <View style={{ paddingHorizontal: horizontalPadding, paddingTop: verticalPadding * 0.4 }}>
           <View>
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 6,
+                marginBottom: 12,
               }}
             >
-              <Text
-                style={{
-                  fontSize: sectionTitleSize,
-                  fontWeight: "600",
-                  color: "#0b2540",
-                }}
-              >
-                Active Shipments
-              </Text>
-              <Link href="/trips" asChild>
-                <TouchableOpacity
-                  activeOpacity={0.7}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View style={{ width: 3, height: 20, backgroundColor: "#1a8ad4", borderRadius: 2 }} />
+                <Text
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 4,
+                    fontSize: sectionTitleSize,
+                    fontWeight: "700",
+                    color: "#0b2540",
                   }}
                 >
-                  <Text
+                  Active Trips
+                </Text>
+                {recentActive.length > 0 && (
+                  <View
                     style={{
-                      fontSize: subtitleFontSize,
-                      fontWeight: "600",
-                      color: "#1a8ad4",
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: 10,
+                      backgroundColor: "#dbeafe",
                     }}
                   >
-                    View All
-                  </Text>
-                  <ArrowRight size={14} color="#1a8ad4" strokeWidth={2} />
-                </TouchableOpacity>
-              </Link>
+                    <Text style={{ fontSize: subtitleFontSize, fontWeight: "700", color: "#1a8ad4" }}>
+                      {recentActive.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {recentActive.length > 0 && (
+                <Link href="/trips" asChild>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      backgroundColor: "#f4f8fa",
+                      borderWidth: 1,
+                      borderColor: "#e8eef3",
+                    }}
+                  >
+                    <Text style={{ fontSize: subtitleFontSize, fontWeight: "600", color: "#1a8ad4" }}>
+                      View All
+                    </Text>
+                    <ArrowRight size={12} color="#1a8ad4" strokeWidth={2.5} />
+                  </TouchableOpacity>
+                </Link>
+              )}
             </View>
             {recentActive.length === 0 ? (
-              <Text
+              <View
                 style={{
-                  fontSize: subtitleFontSize,
-                  color: "rgba(0,0,0,0.4)",
-                  marginBottom: 16,
+                  alignItems: "center",
+                  paddingVertical: 32,
+                  gap: 8,
+                  backgroundColor: "#f4f8fa",
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: "#e8eef3",
                 }}
               >
-                No active shipments
-              </Text>
+                <Gauge size={24} color="#9bb4c7" strokeWidth={1.5} />
+                <Text
+                  style={{
+                    fontSize: subtitleFontSize,
+                    color: "#587a94",
+                    fontWeight: "500",
+                  }}
+                >
+                  No active shipments
+                </Text>
+              </View>
             ) : (
-              <View style={{ gap: 10, marginBottom: 16 }}>
+              <View style={{ gap: 6, marginBottom: 16 }}>
                 {activeGrouped.groups.map(([tripId, groupShipments]) => {
                   const trip = toTrip(groupShipments[0]);
                   return (
