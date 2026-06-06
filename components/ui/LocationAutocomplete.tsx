@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import {
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -30,6 +31,8 @@ export function LocationAutocomplete({
   const [suggestions, setSuggestions] = useState<PhotonFeature[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSelecting = useRef(false);
 
   const handleChange = (text: string) => {
     onValueChange(text);
@@ -55,6 +58,7 @@ export function LocationAutocomplete({
   };
 
   const handleSelect = (feature: PhotonFeature) => {
+    isSelecting.current = true;
     const displayName = formatPhotonName(feature);
     onValueChange(displayName);
     onLocationSelect(feature);
@@ -62,11 +66,29 @@ export function LocationAutocomplete({
     setSuggestions([]);
   };
 
+  const handleFocus = () => {
+    if (suggestions.length > 0) {
+      setShowDropdown(true);
+    }
+  };
+
+  const handleBlur = () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+    blurTimer.current = setTimeout(() => {
+      if (!isSelecting.current) {
+        setShowDropdown(false);
+      }
+      isSelecting.current = false;
+    }, 150);
+  };
+
   return (
-    <View style={{ position: "relative", zIndex: showDropdown ? 1000 : 0 }}>
+    <View>
       <TextInput
         value={value}
         onChangeText={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         placeholder={placeholder ?? "City or location"}
         placeholderTextColor="#9bb4c7"
         style={[
@@ -86,10 +108,6 @@ export function LocationAutocomplete({
       {showDropdown && suggestions.length > 0 && (
         <View
           style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
             marginTop: 4,
             backgroundColor: "white",
             borderRadius: 12,
@@ -101,10 +119,12 @@ export function LocationAutocomplete({
             shadowOffset: { width: 0, height: 4 },
             elevation: 6,
             maxHeight: 240,
-            zIndex: 100,
           }}
         >
-          <View>
+          <ScrollView
+            keyboardShouldPersistTaps="always"
+            nestedScrollEnabled
+          >
             {suggestions.map((item, i) => {
               const p = item.properties;
               const subtitle = [p.city, p.state, p.country]
@@ -153,7 +173,7 @@ export function LocationAutocomplete({
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
       )}
     </View>

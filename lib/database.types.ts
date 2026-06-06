@@ -26,6 +26,7 @@ export type Database = {
           duration_hours: number
           hs_code: string | null
           ice_remaining_kg: number | null
+          ice_type: string | null
           id: number
           is_planned: boolean | null
           melt_rate_kg_per_hr: number | null
@@ -54,6 +55,7 @@ export type Database = {
           duration_hours: number
           hs_code?: string | null
           ice_remaining_kg?: number | null
+          ice_type?: string | null
           id?: number
           is_planned?: boolean | null
           melt_rate_kg_per_hr?: number | null
@@ -84,6 +86,7 @@ export type Database = {
           duration_hours?: number
           hs_code?: string | null
           ice_remaining_kg?: number | null
+          ice_type?: string | null
           id?: number
           is_planned?: boolean | null
           melt_rate_kg_per_hr?: number | null

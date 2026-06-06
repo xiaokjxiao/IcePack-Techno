@@ -9,7 +9,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft, Trash2, Package, FileText, Thermometer, Calculator } from "lucide-react-native";
+import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft, Trash2, Package, FileText, Thermometer } from "lucide-react-native";
 import { EditableField } from "@/components/ui/EditableField";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast, ToastBanner } from "@/components/ui/toast";
@@ -23,9 +23,12 @@ import type { Database } from "@/lib/database.types";
 import {
   getProduct,
   getProfileFor,
+  calculateIceDistribution,
+  type IceTypeKey,
   type TripStatus,
 } from "@/lib/icepack/data";
 import { ProductIcon } from "@/components/ui/ProductIcon";
+import { CalculationResult } from "@/components/create/CalculationResult";
 import {
   getShipment,
   getTrip,
@@ -477,41 +480,19 @@ export default function ShipmentDetailScreen() {
 
         {/* Ice Calculation */}
         {shipment.recommended_ice_kg != null && (
-          <View
-            style={{
-              backgroundColor: "white",
-              borderRadius: 16,
-              padding: isTablet ? 20 : 16,
-              borderWidth: 1,
-              borderColor: "#e8eef3",
-              shadowColor: "#0b2540",
-              shadowOpacity: 0.04,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 2,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
-              <Calculator size={16} color="#587a94" strokeWidth={1.5} />
-              <Text
-                style={{
-                  fontSize: labelSize * 0.9,
-                  fontWeight: "600",
-                  color: "#587a94",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}
-              >
-                Ice Calculation
-              </Text>
-            </View>
-            <View style={{ gap: 10 }}>
-              <Info label="Recommended Ice" value={`${shipment.recommended_ice_kg} kg`} strong />
-              <Info label="Melt Rate" value={`${shipment.melt_rate_kg_per_hr} kg/hr`} />
-              <Info label="Safe Duration" value={`${shipment.safe_duration_hours} hrs`} accent />
-              <Info label="Ice Remaining" value={`${shipment.ice_remaining_kg} kg`} />
-            </View>
-          </View>
+          <CalculationResult
+            recommendedIceKg={shipment.recommended_ice_kg}
+            meltRateKgPerHr={shipment.melt_rate_kg_per_hr ?? 0}
+            safeDurationHours={shipment.safe_duration_hours ?? 0}
+            iceDistribution={calculateIceDistribution(
+              shipment.cargo_kg ?? 0,
+              shipment.duration_hours ?? 0,
+              shipment.units_pallets ?? 0,
+              shipment.cargo_category,
+              profile,
+            )}
+            selectedIceTypeKey={shipment.ice_type as IceTypeKey | undefined ?? null}
+          />
         )}
 
         {/* Notes */}

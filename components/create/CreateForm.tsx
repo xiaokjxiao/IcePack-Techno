@@ -9,14 +9,19 @@ import { TempRangeCard } from "@/components/create/TempRangeCard";
 import { CreateButtons } from "@/components/create/CreateButtons";
 import {
   PRODUCT_CATEGORIES,
+  ICE_TYPES,
   calculateIce,
+  calculateIceDistribution,
+  calculateIceForType,
   getProfileFor,
+  type IceTypeKey,
 } from "@/lib/icepack/data";
 import { createShipment, createTrip } from "@/lib/icepack/services";
+
 import { useResponsiveFontSize } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 import { LocationAutocomplete } from "@/components/ui/LocationAutocomplete";
-import { ChevronLeft, ChevronRight } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, AlertCircle } from "lucide-react-native";
 
 const STEPS = [
   { num: 1, label: "Product Details" },
@@ -24,12 +29,19 @@ const STEPS = [
   { num: 3, label: "Quantity & Temp" },
 ];
 
+type StepErrors = Record<string, boolean>;
+
+const STEP1_REQUIRED = ["shipmentName"];
+const STEP2_REQUIRED = ["originLocation", "destinationLocation"];
+const STEP3_REQUIRED = ["cargoKg", "durationHours"];
+
 export function CreateForm() {
   const { isTablet } = useScreenDimensions();
   const labelSize = useResponsiveFontSize("sm");
   const inputSize = useResponsiveFontSize("base");
 
   const [step, setStep] = useState(1);
+  const [errors, setErrors] = useState<StepErrors>({});
 
   const [productId, setProductId] = useState(PRODUCT_CATEGORIES[0].id);
   const [shipmentName, setShipmentName] = useState("");
@@ -44,6 +56,7 @@ export function CreateForm() {
   const [scheduleDate, setScheduleDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [unitsPallets, setUnitsPallets] = useState("");
+  const [selectedIceTypeKey, setSelectedIceTypeKey] = useState<IceTypeKey | null>(null);
 
   const profile = getProfileFor(productId);
   const displayName = shipmentName || "None";
@@ -53,8 +66,71 @@ export function CreateForm() {
     [cargoKg, durationHours, profile],
   );
 
+  const finalIceCalc = useMemo(() => {
+    if (selectedIceTypeKey) {
+      const iceType = ICE_TYPES[selectedIceTypeKey];
+      const { amountKg, meltRateKgPerHr, safeDurationHours } = calculateIceForType(
+        Number(cargoKg) || 0, Number(durationHours) || 0, Number(unitsPallets) || 0, iceType, profile,
+      );
+      return { recommendedIceKg: amountKg, meltRateKgPerHr, safeDurationHours };
+    }
+    return calc;
+  }, [selectedIceTypeKey, cargoKg, durationHours, unitsPallets, profile, calc]);
+
+  const iceDistribution = useMemo(
+    () => calculateIceDistribution(Number(cargoKg) || 0, Number(durationHours) || 0, Number(unitsPallets) || 0, productId, profile),
+    [cargoKg, durationHours, unitsPallets, productId, profile],
+  );
+
   const canSubmit = Number(cargoKg) > 0 && Number(durationHours) > 0;
   const [isCreating, setIsCreating] = useState(false);
+
+  const fieldValues: Record<string, string> = {
+    shipmentName,
+    originLocation,
+    destinationLocation,
+    cargoKg,
+    durationHours,
+  };
+
+  const validateStep = (stepNum: number): boolean => {
+    const required =
+      stepNum === 1 ? STEP1_REQUIRED :
+      stepNum === 2 ? STEP2_REQUIRED :
+      STEP3_REQUIRED;
+
+    const newErrors: StepErrors = {};
+    let valid = true;
+    for (const key of required) {
+      if (!fieldValues[key].trim()) {
+        newErrors[key] = true;
+        valid = false;
+      }
+    }
+    setErrors(newErrors);
+    return valid;
+  };
+
+  const handleNext = () => {
+    if (validateStep(step)) {
+      setStep((s) => s + 1);
+    }
+  };
+
+  const handleBack = () => {
+    setErrors({});
+    setStep((s) => s - 1);
+  };
+
+  const clearFieldError = (key: string) => {
+    if (errors[key]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
 
   const handleCreate = async (startNow: boolean) => {
     if (!canSubmit || isCreating) return;
@@ -83,10 +159,11 @@ export function CreateForm() {
         notes: notes || null,
         is_planned: !startNow,
         status: startNow ? "active" : "planned",
-        recommended_ice_kg: calc.recommendedIceKg,
-        ice_remaining_kg: calc.recommendedIceKg,
-        melt_rate_kg_per_hr: calc.meltRateKgPerHr,
-        safe_duration_hours: calc.safeDurationHours,
+        recommended_ice_kg: finalIceCalc.recommendedIceKg,
+        ice_remaining_kg: finalIceCalc.recommendedIceKg,
+        melt_rate_kg_per_hr: finalIceCalc.meltRateKgPerHr,
+        safe_duration_hours: finalIceCalc.safeDurationHours,
+        ice_type: selectedIceTypeKey || null,
         hs_code: hsCode || null,
         supplier_name: supplierName || null,
         schedule: scheduleDate?.toISOString() || null,
@@ -98,6 +175,7 @@ export function CreateForm() {
       await createShipment(shipmentInput as any);
 
       setStep(1);
+      setErrors({});
       setProductId(PRODUCT_CATEGORIES[0].id);
       setShipmentName("");
       setCargoKg("");
@@ -109,6 +187,7 @@ export function CreateForm() {
       setSupplierName("");
       setScheduleDate(null);
       setUnitsPallets("");
+      setSelectedIceTypeKey(null);
       setIsCreating(false);
 
       router.replace("/(tabs)/shipments");
@@ -120,18 +199,36 @@ export function CreateForm() {
     }
   };
 
-  const inputStyle = {
+  const inputStyle = (fieldKey?: string) => ({
     fontSize: inputSize,
     backgroundColor: "#f4f8fa",
-    borderWidth: 1,
-    borderColor: "#e8eef3",
+    borderWidth: fieldKey && errors[fieldKey] ? 2 : 1,
+    borderColor: fieldKey && errors[fieldKey] ? "#ef4444" : "#e8eef3",
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: isTablet ? 14 : 12,
     color: "#0b2540",
-  };
+  });
 
-  const sectionLabel = (title: string) => (
+  const requiredLabel = (title: string) => (
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <Text
+        style={{
+          fontSize: labelSize,
+          fontWeight: "600",
+          color: "#0b2540",
+          marginBottom: 10,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+        }}
+      >
+        {title}
+      </Text>
+      <Text style={{ color: "#ef4444", marginLeft: 2, marginBottom: 10, fontWeight: "700" }}> *</Text>
+    </View>
+  );
+
+  const optionalLabel = (title: string) => (
     <Text
       style={{
         fontSize: labelSize,
@@ -158,6 +255,16 @@ export function CreateForm() {
       {title}
     </Text>
   );
+
+  const errorText = (fieldKey: string) =>
+    errors[fieldKey] ? (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
+        <AlertCircle size={12} color="#ef4444" strokeWidth={2} />
+        <Text style={{ fontSize: 11, color: "#ef4444", fontWeight: "500" }}>
+          Required
+        </Text>
+      </View>
+    ) : null;
 
   const renderStepIndicator = () => (
     <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 4 }}>
@@ -220,22 +327,36 @@ export function CreateForm() {
       {step === 1 && (
         <View style={{ gap: 20 }}>
           <View>
-            {sectionLabel("Shipment Name")}
+            {requiredLabel("Shipment Name")}
             <TextInput
               value={shipmentName}
-              onChangeText={setShipmentName}
+              onChangeText={(v) => { setShipmentName(v); clearFieldError("shipmentName"); }}
               placeholder="Enter shipment name"
-              placeholderTextColor="#9bb4c7"
-              style={inputStyle}
+              placeholderTextColor={errors.shipmentName ? "#fca5a5" : "#9bb4c7"}
+              style={inputStyle("shipmentName")}
             />
+            {errorText("shipmentName")}
           </View>
 
           <View>
-            {sectionLabel("Cargo Type")}
+            {optionalLabel("Cargo Type")}
             <CargoCategoryPicker
               categories={PRODUCT_CATEGORIES}
               selectedId={productId}
               onSelect={(id) => setProductId(id)}
+            />
+          </View>
+
+          <View>
+            {optionalLabel("Storage Profile")}
+            <TempRangeCard
+              profile={{
+                label: profile.label,
+                minTemp: profile.tempMinC,
+                maxTemp: profile.tempMaxC,
+                meltFactor: profile.iceFactor,
+                description: profile.note,
+              }}
             />
           </View>
         </View>
@@ -245,36 +366,38 @@ export function CreateForm() {
       {step === 2 && (
         <View style={{ gap: 20 }}>
           <View>
-            {sectionLabel("Route")}
+            {requiredLabel("Route")}
             <View style={{ gap: 12 }}>
               <View>
                 {fieldLabel("Origin")}
                 <LocationAutocomplete
                   value={originLocation}
-                  onValueChange={setOriginLocation}
+                  onValueChange={(v) => { setOriginLocation(v); clearFieldError("originLocation"); }}
                   onLocationSelect={() => {}}
-                  placeholder="City or location"
+                  placeholder={errors.originLocation ? "Required — city or location" : "City or location"}
                 />
+                {errorText("originLocation")}
               </View>
               <View>
                 {fieldLabel("Destination")}
                 <LocationAutocomplete
                   value={destinationLocation}
-                  onValueChange={setDestinationLocation}
+                  onValueChange={(v) => { setDestinationLocation(v); clearFieldError("destinationLocation"); }}
                   onLocationSelect={() => {}}
-                  placeholder="City or location"
+                  placeholder={errors.destinationLocation ? "Required — city or location" : "City or location"}
                 />
+                {errorText("destinationLocation")}
               </View>
             </View>
           </View>
 
           <View>
-            {sectionLabel("Schedule")}
+            {optionalLabel("Schedule")}
             <View style={{ flexDirection: "row", gap: 8 }}>
               <TouchableOpacity
                 onPress={() => setShowDatePicker(true)}
                 activeOpacity={0.75}
-                style={[inputStyle, { flex: 1, justifyContent: "center" }]}
+                style={[inputStyle(), { flex: 1, justifyContent: "center" }]}
               >
                 <Text
                   style={{
@@ -318,7 +441,7 @@ export function CreateForm() {
           </View>
 
           <View>
-            {sectionLabel("Customs & Supplier")}
+            {optionalLabel("Customs & Supplier")}
             <View style={{ gap: 12 }}>
               <View>
                 {fieldLabel("HS Code / Classification")}
@@ -327,7 +450,7 @@ export function CreateForm() {
                   onChangeText={setHsCode}
                   placeholder="e.g. 0201.10"
                   placeholderTextColor="#9bb4c7"
-                  style={inputStyle}
+                  style={inputStyle()}
                 />
               </View>
               <View>
@@ -337,7 +460,7 @@ export function CreateForm() {
                   onChangeText={setSupplierName}
                   placeholder="Supplier name"
                   placeholderTextColor="#9bb4c7"
-                  style={inputStyle}
+                  style={inputStyle()}
                 />
               </View>
             </View>
@@ -349,29 +472,31 @@ export function CreateForm() {
       {step === 3 && (
         <View style={{ gap: 20 }}>
           <View>
-            {sectionLabel("Cargo Details")}
+            {requiredLabel("Cargo Details")}
             <View className="flex-row gap-3">
               <View className="flex-1">
                 {fieldLabel("Weight (kg)")}
                 <TextInput
                   value={cargoKg}
-                  onChangeText={setCargoKg}
+                  onChangeText={(v) => { setCargoKg(v); clearFieldError("cargoKg"); }}
                   keyboardType="decimal-pad"
-                  placeholder="0"
-                  placeholderTextColor="#9bb4c7"
-                  style={inputStyle}
+                  placeholder={errors.cargoKg ? "Required" : "0"}
+                  placeholderTextColor={errors.cargoKg ? "#fca5a5" : "#9bb4c7"}
+                  style={inputStyle("cargoKg")}
                 />
+                {errorText("cargoKg")}
               </View>
               <View className="flex-1">
                 {fieldLabel("Duration (hrs)")}
                 <TextInput
                   value={durationHours}
-                  onChangeText={setDurationHours}
+                  onChangeText={(v) => { setDurationHours(v); clearFieldError("durationHours"); }}
                   keyboardType="decimal-pad"
-                  placeholder="0"
-                  placeholderTextColor="#9bb4c7"
-                  style={inputStyle}
+                  placeholder={errors.durationHours ? "Required" : "0"}
+                  placeholderTextColor={errors.durationHours ? "#fca5a5" : "#9bb4c7"}
+                  style={inputStyle("durationHours")}
                 />
+                {errorText("durationHours")}
               </View>
             </View>
           </View>
@@ -384,12 +509,12 @@ export function CreateForm() {
               keyboardType="number-pad"
               placeholder="0"
               placeholderTextColor="#9bb4c7"
-              style={inputStyle}
+              style={inputStyle()}
             />
           </View>
 
           <View>
-            {sectionLabel("Storage Profile")}
+            {optionalLabel("Storage Profile")}
             <TempRangeCard
               profile={{
                 label: profile.label,
@@ -401,14 +526,37 @@ export function CreateForm() {
             />
           </View>
 
+          {selectedIceTypeKey == null && Number(cargoKg) > 0 && Number(durationHours) > 0 && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                backgroundColor: "#fef3c7",
+                borderRadius: 10,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: "#fcd34d",
+              }}
+            >
+              <AlertCircle size={16} color="#d97706" strokeWidth={2} />
+              <Text style={{ fontSize: labelSize, color: "#92400e", fontWeight: "500", flex: 1 }}>
+                Select an ice type below to calculate the exact amount needed for your shipment.
+              </Text>
+            </View>
+          )}
+
           <CalculationResult
             recommendedIceKg={calc.recommendedIceKg}
             meltRateKgPerHr={calc.meltRateKgPerHr}
             safeDurationHours={calc.safeDurationHours}
+            iceDistribution={iceDistribution}
+            selectedIceTypeKey={selectedIceTypeKey}
+            onSelectIceType={setSelectedIceTypeKey}
           />
 
           <View>
-            {sectionLabel("Notes")}
+            {optionalLabel("Notes")}
             <TextInput
               value={notes}
               onChangeText={setNotes}
@@ -416,7 +564,7 @@ export function CreateForm() {
               placeholderTextColor="#9bb4c7"
               multiline
               numberOfLines={3}
-              style={[inputStyle, { minHeight: 80, textAlignVertical: "top" }]}
+              style={[inputStyle(), { minHeight: 80, textAlignVertical: "top" }]}
             />
           </View>
         </View>
@@ -426,7 +574,7 @@ export function CreateForm() {
       <View style={{ flexDirection: "row", gap: 12 }}>
         {step > 1 && (
           <TouchableOpacity
-            onPress={() => setStep((s) => s - 1)}
+            onPress={handleBack}
             activeOpacity={0.85}
             style={{
               flex: step < 3 ? 1 : 0,
@@ -450,7 +598,7 @@ export function CreateForm() {
         )}
         {step < 3 ? (
           <TouchableOpacity
-            onPress={() => setStep((s) => s + 1)}
+            onPress={handleNext}
             activeOpacity={0.85}
             style={{
               flex: 1,
