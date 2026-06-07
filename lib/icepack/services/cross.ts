@@ -7,8 +7,8 @@ import {
 import type { ShipmentView } from "@/components/shipments/ShipmentCard";
 import { supabase } from "@/lib/supabase";
 import { createTrip } from "@/lib/icepack/services/trips";
-import type { ShipmentRow } from "@/lib/icepack/services/shipments";
-import type { TripRow } from "@/lib/icepack/services/trips";
+import type { ShipmentRow, ShipmentUpdate } from "@/lib/icepack/services/shipments";
+import type { TripRow, TripUpdate } from "@/lib/icepack/services/trips";
 
 type TripWithShipments = TripRow & { shipments: ShipmentRow[] };
 
@@ -68,7 +68,7 @@ export async function updateShipmentStatus(id: number, status: TripStatus) {
         .single();
 
       const now = new Date().toISOString();
-      const patch: Record<string, unknown> = { status: derivedStatus, updated_at: now };
+      const patch: TripUpdate = { status: derivedStatus, updated_at: now };
 
       if (derivedStatus === "active" && currentTrip?.status !== "active" && !currentTrip?.started_at) {
         patch.started_at = now;
@@ -83,7 +83,7 @@ export async function updateShipmentStatus(id: number, status: TripStatus) {
 }
 
 export async function updateShipmentTrip(shipmentId: number, tripId: number, isPlanned = false, status?: TripStatus) {
-  const updateData: Record<string, unknown> = { trip_id: tripId, is_planned: isPlanned };
+  const updateData: ShipmentUpdate = { trip_id: tripId, is_planned: isPlanned };
   if (status) {
     updateData.status = status;
   }
@@ -208,6 +208,7 @@ export async function getTripsWithAllShipments(): Promise<TripWithShipmentViews[
         meltRateKgPerHr: s.melt_rate_kg_per_hr ?? null,
         safeDurationHours: s.safe_duration_hours ?? null,
         startedAt: t.started_at,
+        schedule: s.schedule ?? null,
       }));
       return { trip, shipments };
     })
@@ -275,6 +276,7 @@ export async function getShipmentsWithTrips() {
     meltRateKgPerHr: s.melt_rate_kg_per_hr ?? null,
     safeDurationHours: s.safe_duration_hours ?? null,
     startedAt: s.trip?.started_at ?? null,
+    schedule: s.schedule ?? null,
   }));
 }
 

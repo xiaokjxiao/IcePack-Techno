@@ -3,7 +3,6 @@ import * as Notifications from "expo-notifications";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -38,6 +37,13 @@ export async function ensureNotificationPermissions(): Promise<boolean> {
         lightColor: "#ef4444",
         sound: "default",
       });
+      await Notifications.setNotificationChannelAsync("departure-reminders", {
+        name: "Departure Reminders",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 200, 100, 200],
+        lightColor: "#1a8ad4",
+        sound: "default",
+      });
     }
 
     permissionsReady = true;
@@ -70,6 +76,32 @@ export async function notifyCriticalShipments(
       sound: "default",
       color: "#ef4444",
       data: { type: "critical", count, names },
+    },
+    trigger: null,
+  });
+}
+
+export async function notifyDepartureReminders(
+  shipments: { name: string; time: string }[],
+): Promise<void> {
+  if (shipments.length === 0) return;
+
+  const ok = await ensureNotificationPermissions();
+  if (!ok) return;
+
+  const body =
+    shipments.length === 1
+      ? `${shipments[0].name} departs at ${shipments[0].time}.`
+      : `${shipments.length} shipments scheduled today — including ${shipments[0].name} at ${shipments[0].time}.`;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Departure Reminder",
+      subtitle: shipments.length === 1 ? "1 shipment scheduled today" : `${shipments.length} shipments scheduled today`,
+      body,
+      sound: "default",
+      color: "#1a8ad4",
+      data: { type: "departure", count: shipments.length },
     },
     trigger: null,
   });

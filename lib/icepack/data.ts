@@ -231,16 +231,21 @@ export function calculateIce(
   cargoKg: number,
   durationHours: number,
   profile: StorageProfile,
+  ambientTempC?: number,
+  targetTempC?: number,
 ): CalcOutput {
   if (!cargoKg || !durationHours) {
     return { recommendedIceKg: 0, meltRateKgPerHr: 0, safeDurationHours: 0 };
   }
-  const baseDaily = cargoKg * profile.iceFactor; // kg ice per day reference
+  const baseDaily = cargoKg * profile.iceFactor;
   const recommendedIceKg = Math.max(
     cargoKg * profile.iceFactor * (durationHours / 24) * 1.25,
     baseDaily * 0.4,
   );
-  const meltRateKgPerHr = (recommendedIceKg / 100) * profile.meltBase;
+  const effectiveMeltBase = ambientTempC != null
+    ? adjustMeltBaseForTemp(profile.meltBase, ambientTempC, targetTempC ?? profile.tempMaxC)
+    : profile.meltBase;
+  const meltRateKgPerHr = (recommendedIceKg / 100) * effectiveMeltBase;
   const safeDurationHours = recommendedIceKg / Math.max(meltRateKgPerHr, 0.1);
   return {
     recommendedIceKg: round(recommendedIceKg),
@@ -251,6 +256,19 @@ export function calculateIce(
 
 function round(n: number) {
   return Math.round(n * 10) / 10;
+}
+
+const MELT_BASELINE_TEMP_C = 28;
+
+export function adjustMeltBaseForTemp(
+  meltBase: number,
+  ambientTempC: number,
+  targetTempC: number,
+): number {
+  const tempDelta = ambientTempC - targetTempC;
+  if (tempDelta <= 0) return meltBase * 0.5;
+  const tempFactor = tempDelta / MELT_BASELINE_TEMP_C;
+  return round(meltBase * Math.max(0.5, tempFactor));
 }
 
 export function getProduct(id: string): ProductCategory {
@@ -437,6 +455,8 @@ export function calculateIceForType(
   iceType: IceType,
   profile: StorageProfile,
   weightPerPallet?: number,
+  ambientTempC?: number,
+  targetTempC?: number,
 ): IceCalculationOutput {
   if (!cargoKg || !durationHours || palletsOrUnits <= 0) {
     return {
@@ -465,7 +485,11 @@ export function calculateIceForType(
 
   const icePerPalletKg = round(amountKg / validatedPallets);
 
-  const meltRateKgPerHr = round((amountKg / 100) * iceType.meltBase);
+  const effectiveMeltBase = ambientTempC != null
+    ? adjustMeltBaseForTemp(iceType.meltBase, ambientTempC, targetTempC ?? profile.tempMaxC)
+    : iceType.meltBase;
+
+  const meltRateKgPerHr = round((amountKg / 100) * effectiveMeltBase);
 
   const safeDurationHours = meltRateKgPerHr > 0
     ? round(amountKg / meltRateKgPerHr)
@@ -487,11 +511,13 @@ export function calculateIceDistribution(
   productId: string,
   profile: StorageProfile,
   weightPerPallet?: number,
+  ambientTempC?: number,
+  targetTempC?: number,
 ): IceDistribution[] {
   const types = getRecommendedIceTypes(productId);
   return types.map((iceType) => {
     const { amountKg, meltRateKgPerHr, safeDurationHours } = calculateIceForType(
-      cargoKg, durationHours, palletsOrUnits, iceType, profile, weightPerPallet,
+      cargoKg, durationHours, palletsOrUnits, iceType, profile, weightPerPallet, ambientTempC, targetTempC,
     );
     return { iceType, amountKg, meltRateKgPerHr, safeDurationHours };
   });
@@ -503,6 +529,8 @@ export function calculateIceWithPalletDetails(
   durationHours: number,
   iceType: IceType,
   profile: StorageProfile,
+  ambientTempC?: number,
+  targetTempC?: number,
 ): IceCalculationOutput {
   const totalCargoKg = palletCount * weightPerPalletKg;
   return calculateIceForType(
@@ -512,6 +540,8 @@ export function calculateIceWithPalletDetails(
     iceType,
     profile,
     weightPerPalletKg,
+    ambientTempC,
+    targetTempC,
   );
 }
 

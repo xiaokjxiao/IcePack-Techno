@@ -25,6 +25,7 @@ export interface ShipmentView {
   meltRateKgPerHr: number | null;
   safeDurationHours: number | null;
   startedAt: string | null;
+  schedule: string | null;
 }
 
 const STATUS_BG_COLORS: Record<string, string> = {

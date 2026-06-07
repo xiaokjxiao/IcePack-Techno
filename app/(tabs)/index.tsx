@@ -17,7 +17,8 @@ import { liveStateFor } from "@/lib/icepack/data";
 import { getShipmentsWithTrips } from "@/lib/icepack/services";
 import { getCurrentUser } from "@/lib/auth";
 import { CriticalBanner } from "@/components/ui/CriticalBanner";
-import { notifyCriticalShipments } from "@/lib/notifications";
+import { DepartureBanner } from "@/components/ui/DepartureBanner";
+import { notifyCriticalShipments, notifyDepartureReminders } from "@/lib/notifications";
 
 function toTrip(s: ShipmentView): Trip {
   return {
@@ -117,11 +118,39 @@ export default function HomeScreen() {
     [criticalShipments],
   );
 
+  const todayScheduled = useMemo(() => {
+    const todayStr = new Date().toDateString();
+    return shipments.filter((s) => {
+      if (!s.schedule) return false;
+      return new Date(s.schedule).toDateString() === todayStr;
+    });
+  }, [shipments]);
+
+  const todayDepartureNames = useMemo(
+    () =>
+      todayScheduled.map((s) => ({
+        name: s.name,
+        time: s.schedule
+          ? new Date(s.schedule).toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })
+          : "",
+        shipmentId: s.id,
+        tripId: s.tripId,
+      })),
+    [todayScheduled],
+  );
+
   useEffect(() => {
     if (criticalShipments.length > 0) {
       notifyCriticalShipments(criticalShipments.length, criticalNames);
     }
-  }, [criticalShipments.length > 0 ? criticalShipments.length : 0]);
+    if (todayDepartureNames.length > 0) {
+      notifyDepartureReminders(todayDepartureNames);
+    }
+  }, [criticalShipments.length > 0 ? criticalShipments.length : 0, todayDepartureNames.length > 0 ? todayDepartureNames.length : 0]);
 
   const statCards: { label: string; value: string; accent?: boolean }[] = [
     { label: "Active", value: String(tripCounts.active).padStart(2, "0") },
@@ -278,6 +307,12 @@ export default function HomeScreen() {
             count={tripCounts.critical}
             firstName={criticalNames[0] ?? ""}
           />
+        </View>
+      )}
+
+      {todayDepartureNames.length > 0 && (
+        <View style={{ marginTop: tripCounts.critical > 0 ? 8 : 16 }}>
+          <DepartureBanner entries={todayDepartureNames} />
         </View>
       )}
 

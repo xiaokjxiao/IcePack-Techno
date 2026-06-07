@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity } from "react-native";
-import { Snowflake, Clock, Gauge, CheckCircle2 } from "lucide-react-native";
+import { Snowflake, Clock, Gauge, CheckCircle2, Thermometer } from "lucide-react-native";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 import type { IceDistribution, IceTypeKey } from "@/lib/icepack/data";
 
@@ -10,15 +10,22 @@ interface CalculationResultProps {
   iceDistribution: IceDistribution[];
   selectedIceTypeKey?: IceTypeKey | null;
   onSelectIceType?: (key: IceTypeKey) => void;
+  ambientTempC?: number | null;
+  ambientHumidityPct?: number | null;
+  targetTempC?: number | null;
 }
 
 export function CalculationResult({
   iceDistribution,
   selectedIceTypeKey,
   onSelectIceType,
+  ambientTempC,
+  ambientHumidityPct,
+  targetTempC,
 }: CalculationResultProps) {
   const { isTablet } = useScreenDimensions();
   const canSelect = !!onSelectIceType;
+  const hasWeather = ambientTempC != null;
 
   return (
     <View
@@ -54,6 +61,32 @@ export function CalculationResult({
           </Text>
         )}
       </View>
+
+      {hasWeather && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            backgroundColor: "#f0f9ff",
+            borderRadius: 8,
+            padding: 8,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: "#bae6fd",
+          }}
+        >
+          <Thermometer size={13} color="#0369a1" strokeWidth={1.5} />
+          <Text style={{ fontSize: isTablet ? 12 : 11, color: "#0369a1", fontWeight: "500" }}>
+            Ambient {ambientTempC}°C → target {targetTempC ?? "—"}°C
+            {ambientHumidityPct != null ? ` · ${ambientHumidityPct}% humidity` : ""}
+          </Text>
+          <View style={{ flex: 1 }} />
+          <Text style={{ fontSize: 10, color: "#0284c7" }}>
+            melt adjusted
+          </Text>
+        </View>
+      )}
 
       {iceDistribution.length > 0 && (
         <View style={{ gap: 10 }}>

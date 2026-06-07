@@ -20,6 +20,7 @@ import {
 import { createShipment, createTrip } from "@/lib/icepack/services";
 import { getTravelTimeHours, getRoutingModes, getDefaultRoutingMode } from "@/lib/routing";
 import { withRetry, isNetworkError, getUserNetworkErrorMessage } from "@/lib/network";
+import { fetchRouteWeather, type RouteWeather } from "@/lib/weather";
 import type { PhotonFeature } from "@/lib/photon";
 
 import { useResponsiveFontSize } from "@/hooks/use-responsive-size";
@@ -69,8 +70,14 @@ export function CreateForm() {
   const routeAbortRef = useRef<AbortController | null>(null);
 
   const [routingMode, setRoutingMode] = useState(() => getDefaultRoutingMode());
+  const [routeWeather, setRouteWeather] = useState<RouteWeather | null>(null);
 
   const profile = getProfileFor(productId);
+  const [targetTempC, setTargetTempC] = useState(profile.tempMinC);
+
+  useEffect(() => {
+    setTargetTempC(getProfileFor(productId).tempMinC);
+  }, [productId]);
 
   useEffect(() => {
     if (!originCoords || !destCoords) return;
@@ -87,14 +94,22 @@ export function CreateForm() {
 
     (async () => {
       try {
-        const hours = await getTravelTimeHours(
-          originCoords.lat, originCoords.lng,
-          destCoords.lat, destCoords.lng,
-          controller.signal,
-          routingMode,
-        );
+        const [hours, weather] = await Promise.all([
+          getTravelTimeHours(
+            originCoords.lat, originCoords.lng,
+            destCoords.lat, destCoords.lng,
+            controller.signal,
+            routingMode,
+          ),
+          fetchRouteWeather(
+            originCoords.lat, originCoords.lng,
+            destCoords.lat, destCoords.lng,
+            controller.signal,
+          ),
+        ]);
         if (cancelled) return;
         setDurationHours(String(hours));
+        setRouteWeather(weather);
         setRouteError(false);
       } catch {
         if (cancelled) return;
@@ -119,24 +134,24 @@ export function CreateForm() {
   );
 
   const calc = useMemo(
-    () => calculateIce(totalCargoKg, Number(durationHours) || 0, profile),
-    [totalCargoKg, durationHours, profile],
+    () => calculateIce(totalCargoKg, Number(durationHours) || 0, profile, routeWeather?.avgTempC, targetTempC),
+    [totalCargoKg, durationHours, profile, routeWeather?.avgTempC, targetTempC],
   );
 
   const finalIceCalc = useMemo(() => {
     if (selectedIceTypeKey) {
       const iceType = ICE_TYPES[selectedIceTypeKey];
       const { amountKg, meltRateKgPerHr, safeDurationHours } = calculateIceForType(
-        totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, iceType, profile,
+        totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, iceType, profile, undefined, routeWeather?.avgTempC, targetTempC,
       );
       return { recommendedIceKg: amountKg, meltRateKgPerHr, safeDurationHours };
     }
     return calc;
-  }, [selectedIceTypeKey, totalCargoKg, durationHours, containerCount, profile, calc]);
+  }, [selectedIceTypeKey, totalCargoKg, durationHours, containerCount, profile, calc, routeWeather?.avgTempC, targetTempC]);
 
   const iceDistribution = useMemo(
-    () => calculateIceDistribution(totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, productId, profile),
-    [totalCargoKg, durationHours, containerCount, productId, profile],
+    () => calculateIceDistribution(totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, productId, profile, undefined, routeWeather?.avgTempC, targetTempC),
+    [totalCargoKg, durationHours, containerCount, productId, profile, routeWeather?.avgTempC, targetTempC],
   );
 
   const canSubmit = totalCargoKg > 0 && Number(durationHours) > 0;
@@ -212,8 +227,8 @@ export function CreateForm() {
         cargo_category: productId,
         cargo_kg: totalCargoKg,
         duration_hours: Number(durationHours),
-        target_temp_min_c: profile.tempMinC,
-        target_temp_max_c: profile.tempMaxC,
+        target_temp_min_c: targetTempC,
+        target_temp_max_c: targetTempC,
         origin_location: originLocation || null,
         destination_location: destinationLocation || null,
         notes: notes || null,
@@ -247,6 +262,7 @@ export function CreateForm() {
       setDestCoords(null);
       setIsComputingRoute(false);
       setRouteError(false);
+      setRouteWeather(null);
       setRoutingMode(getDefaultRoutingMode());
       setNotes("");
       setHsCode("");
@@ -254,6 +270,7 @@ export function CreateForm() {
       setScheduleDate(null);
       setContainerCount("");
       setSelectedIceTypeKey(null);
+      setTargetTempC(getProfileFor(PRODUCT_CATEGORIES[0].id).tempMinC);
       setIsCreating(false);
 
       router.replace("/(tabs)/shipments");
@@ -426,6 +443,56 @@ export function CreateForm() {
             />
           </View>
 
+          <View>
+            {optionalLabel("Target Temperature")}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: "#f4f8fa",
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: "#e8eef3",
+                paddingHorizontal: 12,
+                paddingVertical: isTablet ? 12 : 10,
+                gap: 10,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => setTargetTempC((t) => Math.max(profile.tempMinC, t - 1))}
+                activeOpacity={0.7}
+                style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  backgroundColor: targetTempC <= profile.tempMinC ? "#e8eef3" : "#dbeafe",
+                  alignItems: "center", justifyContent: "center",
+                }}
+                disabled={targetTempC <= profile.tempMinC}
+              >
+                <Text style={{ fontSize: 16, color: targetTempC <= profile.tempMinC ? "#9bb4c7" : "#1a8ad4", fontWeight: "700" }}>−</Text>
+              </TouchableOpacity>
+              <View style={{ flex: 1, alignItems: "center" }}>
+                <Text style={{ fontSize: isTablet ? 18 : 16, fontWeight: "700", color: "#0b2540" }}>
+                  {targetTempC}°C
+                </Text>
+                <Text style={{ fontSize: 10, color: "#9bb4c7", marginTop: 2 }}>
+                  range {profile.tempMinC}° to {profile.tempMaxC}°C
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setTargetTempC((t) => Math.min(profile.tempMaxC, t + 1))}
+                activeOpacity={0.7}
+                style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  backgroundColor: targetTempC >= profile.tempMaxC ? "#e8eef3" : "#dbeafe",
+                  alignItems: "center", justifyContent: "center",
+                }}
+                disabled={targetTempC >= profile.tempMaxC}
+              >
+                <Text style={{ fontSize: 16, color: targetTempC >= profile.tempMaxC ? "#9bb4c7" : "#1a8ad4", fontWeight: "700" }}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <ContainerRecommendationCard
             container={PRODUCT_CATEGORIES.find((p) => p.id === productId)!.container}
             profile={profile.key}
@@ -507,6 +574,44 @@ export function CreateForm() {
             </View>
           </View>
 
+          {routeWeather && (
+            <View>
+              {optionalLabel("Route Conditions")}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  backgroundColor: "#f0f9ff",
+                  borderRadius: 10,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderColor: "#bae6fd",
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Text style={{ fontSize: 14 }}>🌡</Text>
+                  <Text style={{ fontSize: labelSize, color: "#0369a1", fontWeight: "600" }}>
+                    {routeWeather.avgTempC}°C
+                  </Text>
+                </View>
+                <View style={{ width: 1, height: 16, backgroundColor: "#bae6fd" }} />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Text style={{ fontSize: 14 }}>💧</Text>
+                  <Text style={{ fontSize: labelSize, color: "#0369a1", fontWeight: "600" }}>
+                    {routeWeather.avgHumidityPct}% humidity
+                  </Text>
+                </View>
+                <View style={{ width: 1, height: 16, backgroundColor: "#bae6fd" }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: labelSize * 0.8, color: "#0284c7" }} numberOfLines={1}>
+                    Ice melt adjusted for route weather
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           <View>
             {optionalLabel("Travel Mode")}
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -560,8 +665,14 @@ export function CreateForm() {
                         year: "numeric",
                         month: "short",
                         day: "numeric",
+                      }) +
+                      ", " +
+                      scheduleDate.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
                       })
-                    : "Select date..."}
+                    : "Select date & time..."}
                 </Text>
               </TouchableOpacity>
               {scheduleDate && (
@@ -715,6 +826,9 @@ export function CreateForm() {
             iceDistribution={iceDistribution}
             selectedIceTypeKey={selectedIceTypeKey}
             onSelectIceType={setSelectedIceTypeKey}
+            ambientTempC={routeWeather?.avgTempC ?? null}
+            ambientHumidityPct={routeWeather?.avgHumidityPct ?? null}
+            targetTempC={targetTempC}
           />
 
           <View>

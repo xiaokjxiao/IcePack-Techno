@@ -52,6 +52,7 @@ function toShipmentView(s: ShipmentRow, trip: Trip): ShipmentView {
     meltRateKgPerHr: s.melt_rate_kg_per_hr ?? null,
     safeDurationHours: s.safe_duration_hours ?? null,
     startedAt: trip.startedAt,
+    schedule: s.schedule ?? null,
   };
 }
 
