@@ -28,6 +28,7 @@ import {
   getShipmentsWithTrips,
   updateShipmentTrip,
 } from "@/lib/icepack/services";
+import { withRetry, isNetworkError, getUserNetworkErrorMessage } from "@/lib/network";
 
 export default function ShipmentsScreen() {
   const insets = useSafeAreaInsets();
@@ -142,15 +143,16 @@ export default function ShipmentsScreen() {
       setShowGroupModal(false);
       try {
         const selected = allShipments.filter((s) => selectedIds.has(s.id));
-        await createGroupedTripFromShipments(selected, name, startNow);
+        await withRetry(() => createGroupedTripFromShipments(selected, name, startNow));
         setAllShipments([]);
         setSelectedIds(new Set());
         setSelectMode(false);
         setGroupName("");
         router.replace("/(tabs)/shipments");
       } catch (e) {
-        console.error("ShipmentsScreen: group failed", e);
-        Alert.alert("Error", e instanceof Error ? e.message : "Failed to create group trip");
+        const msg = getUserNetworkErrorMessage(e);
+        console.error("ShipmentsScreen: group failed", msg, "| raw:", String(e ?? ""));
+        Alert.alert(isNetworkError(e) ? "No Internet Connection" : "Error", msg);
       } finally {
         setGroupLoading(false);
       }

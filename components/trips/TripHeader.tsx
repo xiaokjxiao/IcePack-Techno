@@ -222,7 +222,7 @@ export function TripHeader({
           {shipments.length > 0 && (
             <View style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: xsSize, fontWeight: "600", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Items in this trip
+                Shipments in this trip
               </Text>
             </View>
           )}

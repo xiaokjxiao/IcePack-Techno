@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { AuthForm } from "@/components/auth";
 import { signUpWithEmail } from "@/lib/auth";
@@ -28,33 +28,44 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
-        <Text style={[styles.subtitle, { color: colors.icon }]}>
-          Sign up as an Operator or Tracker
-        </Text>
-      </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
+          <Text style={[styles.subtitle, { color: colors.icon }]}>
+            Sign up as an Operator or Tracker
+          </Text>
+        </View>
 
-      <AuthForm mode="register" onSubmit={handleRegister} loading={loading} />
+        <AuthForm mode="register" onSubmit={handleRegister} loading={loading} />
 
-      <View style={styles.footer}>
-        <Text style={[styles.footerText, { color: colors.icon }]}>
-          Already have an account?
-        </Text>
-        <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-          <Text style={[styles.footerLink, { color: colors.tint }]}> Sign In</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: colors.icon }]}>
+            Already have an account?
+          </Text>
+          <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+            <Text style={[styles.footerLink, { color: colors.tint }]}> Sign In</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
     padding: 24,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   header: {
     alignItems: "center",

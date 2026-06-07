@@ -14,11 +14,32 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          created_at: string | null
+          full_name: string | null
+          id: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       shipments: {
         Row: {
-          schedule: string | null
-          units_pallets: number | null
-          batch_number: string | null
           cargo_category: Database["public"]["Enums"]["cargo_category_enum"]
           cargo_kg: number
           created_at: string
@@ -26,28 +47,24 @@ export type Database = {
           duration_hours: number
           hs_code: string | null
           ice_remaining_kg: number | null
-          ice_type: string | null
+          ice_type: Database["public"]["Enums"]["ice_type_enum"] | null
           id: number
           is_planned: boolean | null
           melt_rate_kg_per_hr: number | null
           notes: string | null
           origin_location: string | null
-          pallets: number | null
           recommended_ice_kg: number | null
           safe_duration_hours: number | null
-          scheduled_delivery_at: string | null
-          scheduled_pickup_at: string | null
+          schedule: string | null
           shipment_name: string
           status: Database["public"]["Enums"]["trip_status_enum"]
-          supplier_country: string | null
           supplier_name: string | null
           target_temp_max_c: number | null
           target_temp_min_c: number | null
           trip_id: number | null
-          units: number | null
+          units_pallets: number | null
         }
         Insert: {
-          batch_number?: string | null
           cargo_category: Database["public"]["Enums"]["cargo_category_enum"]
           cargo_kg: number
           created_at?: string
@@ -55,30 +72,24 @@ export type Database = {
           duration_hours: number
           hs_code?: string | null
           ice_remaining_kg?: number | null
-          ice_type?: string | null
+          ice_type?: Database["public"]["Enums"]["ice_type_enum"] | null
           id?: number
           is_planned?: boolean | null
           melt_rate_kg_per_hr?: number | null
           notes?: string | null
           origin_location?: string | null
-          pallets?: number | null
           recommended_ice_kg?: number | null
           safe_duration_hours?: number | null
           schedule?: string | null
-          scheduled_delivery_at?: string | null
-          scheduled_pickup_at?: string | null
           shipment_name: string
           status?: Database["public"]["Enums"]["trip_status_enum"]
-          supplier_country?: string | null
           supplier_name?: string | null
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
           trip_id?: number | null
-          units?: number | null
           units_pallets?: number | null
         }
         Update: {
-          batch_number?: string | null
           cargo_category?: Database["public"]["Enums"]["cargo_category_enum"]
           cargo_kg?: number
           created_at?: string
@@ -86,26 +97,21 @@ export type Database = {
           duration_hours?: number
           hs_code?: string | null
           ice_remaining_kg?: number | null
-          ice_type?: string | null
+          ice_type?: Database["public"]["Enums"]["ice_type_enum"] | null
           id?: number
           is_planned?: boolean | null
           melt_rate_kg_per_hr?: number | null
           notes?: string | null
           origin_location?: string | null
-          pallets?: number | null
           recommended_ice_kg?: number | null
           safe_duration_hours?: number | null
           schedule?: string | null
-          scheduled_delivery_at?: string | null
-          scheduled_pickup_at?: string | null
           shipment_name?: string
           status?: Database["public"]["Enums"]["trip_status_enum"]
-          supplier_country?: string | null
           supplier_name?: string | null
           target_temp_max_c?: number | null
           target_temp_min_c?: number | null
           trip_id?: number | null
-          units?: number | null
           units_pallets?: number | null
         }
         Relationships: [
@@ -153,7 +159,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_role: { Args: never; Returns: string }
     }
     Enums: {
       cargo_category_enum:
@@ -166,6 +172,7 @@ export type Database = {
         | "electronics"
         | "cosmetics"
         | "agricultural_products"
+      ice_type_enum: "block" | "crushed" | "tube" | "flake" | "dry_ice"
       trip_status_enum: "planned" | "active" | "completed" | "cancelled"
     }
     CompositeTypes: {
@@ -305,6 +312,7 @@ export const Constants = {
         "cosmetics",
         "agricultural_products",
       ],
+      ice_type_enum: ["block", "crushed", "tube", "flake", "dry_ice"],
       trip_status_enum: ["planned", "active", "completed", "cancelled"],
     },
   },

@@ -1,6 +1,9 @@
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -37,7 +40,8 @@ export function GroupTripModal({
       animationType="fade"
       onRequestClose={onCancel}
     >
-      <View
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.5)",
@@ -46,6 +50,15 @@ export function GroupTripModal({
           padding: 24,
         }}
       >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            justifyContent: "center",
+            alignItems: "center",
+            flexGrow: 1,
+            width: "100%",
+          }}
+        >
         <View
           style={{
             backgroundColor: "white",
@@ -175,7 +188,8 @@ export function GroupTripModal({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

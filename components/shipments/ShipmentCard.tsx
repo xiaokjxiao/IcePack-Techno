@@ -1,8 +1,8 @@
+import { ProductIcon } from "@/components/ui/ProductIcon";
 import { useResponsiveFontSize } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 import type { CargoCategory, RiskLevel, TripStatus } from "@/lib/icepack/data";
 import { getProduct, liveStateFor } from "@/lib/icepack/data";
-import { ProductIcon } from "@/components/ui/ProductIcon";
 import { router } from "expo-router";
 import { Check, Layers } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
@@ -74,8 +74,23 @@ function StatusBadge({ status, risk }: { status: string; risk?: RiskLevel }) {
     const bg = STATUS_BG_COLORS[risk] ?? "#fee2e2";
     const tx = STATUS_TEXT_COLORS[risk] ?? "#dc2626";
     return (
-      <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: bg }}>
-        <Text style={{ fontSize: fsXs, fontWeight: "700", color: tx, textTransform: "uppercase", letterSpacing: 0.5 }}>
+      <View
+        style={{
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: 8,
+          backgroundColor: bg,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: fsXs,
+            fontWeight: "700",
+            color: tx,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
           {RISK_CONFIG[risk]?.label ?? risk}
         </Text>
       </View>
@@ -85,8 +100,23 @@ function StatusBadge({ status, risk }: { status: string; risk?: RiskLevel }) {
   const tx = STATUS_TEXT_COLORS[status] ?? "#0891b2";
   const label = STATUS_CONFIG[status]?.label ?? status;
   return (
-    <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: bg }}>
-      <Text style={{ fontSize: fsXs, fontWeight: "700", color: tx, textTransform: "uppercase", letterSpacing: 0.5 }}>
+    <View
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        backgroundColor: bg,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: fsXs,
+          fontWeight: "700",
+          color: tx,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+        }}
+      >
         {label}
       </Text>
     </View>
@@ -185,14 +215,22 @@ export function ShipmentCard({
   const isCompleted = shipment.shipmentStatus === "completed";
   const isPlanned = shipment.shipmentStatus === "planned" || shipment.isPlanned;
 
-  const status = isActive ? "active" : isCompleted ? "completed" : isCancelled ? "cancelled" : "planned";
+  const status = isActive
+    ? "active"
+    : isCompleted
+      ? "completed"
+      : isCancelled
+        ? "cancelled"
+        : "planned";
   const railColor = STATUS_RAIL_COLORS[status] ?? "#06b6d4";
 
   const icePct =
     isActive && live
       ? live.pctRemaining
       : isCancelled && hasTrip
-        ? Math.round((shipment.iceRemainingKg! / shipment.recommendedIceKg!) * 100)
+        ? Math.round(
+            (shipment.iceRemainingKg! / shipment.recommendedIceKg!) * 100,
+          )
         : null;
 
   let iceColor: string | undefined;
@@ -202,41 +240,82 @@ export function ShipmentCard({
     else iceColor = "#0d9488";
   }
 
-  const statusCellColor =
-    isCancelled
+  const statusCellColor = isCancelled
+    ? "#dc2626"
+    : isActive && live && live.risk === "critical"
       ? "#dc2626"
-      : isActive && live && live.risk === "critical"
-        ? "#dc2626"
-        : isActive && live && live.risk === "warning"
-          ? "#d97706"
-          : isActive && live
-            ? "#0d9488"
-            : isCompleted
-              ? "#64748b"
-              : undefined;
+      : isActive && live && live.risk === "warning"
+        ? "#d97706"
+        : isActive && live
+          ? "#0d9488"
+          : isCompleted
+            ? "#64748b"
+            : undefined;
 
   const cardContent = (
     <>
       {/* Left rail */}
-      <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, backgroundColor: railColor }} />
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 4,
+          backgroundColor: railColor,
+        }}
+      />
 
-      <View style={{ padding: isTablet ? 18 : 14, paddingLeft: isTablet ? 22 : 18 }}>
+      <View
+        style={{ padding: isTablet ? 18 : 14, paddingLeft: isTablet ? 22 : 18 }}
+      >
         {/* Header */}
         <View style={{ marginBottom: 12 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
             <View style={{ flex: 1, marginRight: 12 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 6,
+                }}
+              >
                 <ProductIcon name={product.icon} size={fsBase} />
                 <Text
                   numberOfLines={1}
-                  style={{ fontSize: fsBase, fontWeight: "700", color: "#0f1419", flex: 1 }}
+                  style={{
+                    fontSize: fsBase,
+                    fontWeight: "700",
+                    color: "#0f1419",
+                    flex: 1,
+                  }}
                 >
                   {shipment.name}
                 </Text>
               </View>
 
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <Text style={{ fontSize: fsXs, color: "#64748b", fontWeight: "500" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: fsXs,
+                    color: "#64748b",
+                    fontWeight: "500",
+                  }}
+                >
                   {product.label}
                 </Text>
                 {shipment.tripName && (
@@ -253,7 +332,13 @@ export function ShipmentCard({
                       borderColor: "#bfdbfe",
                     }}
                   >
-                    <Text style={{ fontWeight: "600", color: "#0284c7", fontSize: fsXs }}>
+                    <Text
+                      style={{
+                        fontWeight: "600",
+                        color: "#0284c7",
+                        fontSize: fsXs,
+                      }}
+                    >
                       {shipment.tripName}
                     </Text>
                   </View>
@@ -261,23 +346,34 @@ export function ShipmentCard({
               </View>
             </View>
 
-            <StatusBadge status={shipment.shipmentStatus} risk={isActive && live ? live.risk : undefined} />
+            <StatusBadge
+              status={shipment.shipmentStatus}
+              risk={isActive && live ? live.risk : undefined}
+            />
           </View>
         </View>
 
         {/* Cells */}
-        <View style={{ flexDirection: "row", gap: 16, borderTopWidth: 1, borderTopColor: "#e2e8f0", paddingTop: 12 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 16,
+            borderTopWidth: 1,
+            borderTopColor: "#e2e8f0",
+            paddingTop: 12,
+          }}
+        >
           <Cell
             label="Ice Left"
-            value={`${isActive && live ? live.iceRemainingKg : shipment.iceRemainingKg ?? "--"} kg`}
+            value={`${isActive && live ? live.iceRemainingKg : (shipment.iceRemainingKg ?? "--")} kg`}
             valueColor={iceColor}
           />
           <Cell
             label="Duration"
             value={
               isCancelled && live
-                ? `${live.elapsedHours} h`
-                : `${shipment.durationHours} h`
+                ? `${live.elapsedHours}h`
+                : `${shipment.durationHours}h`
             }
           />
           <Cell
@@ -315,7 +411,9 @@ export function ShipmentCard({
             }}
           >
             <Layers size={14} color="#587a94" strokeWidth={1.5} />
-            <Text style={{ fontSize: fsXs, fontWeight: "600", color: "#587a94" }}>
+            <Text
+              style={{ fontSize: fsXs, fontWeight: "600", color: "#587a94" }}
+            >
               Assign to Trip
             </Text>
           </TouchableOpacity>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { router } from "expo-router";
@@ -6,6 +6,7 @@ import { CargoCategoryPicker } from "@/components/create/CargoCategoryPicker";
 import { CalculationResult } from "@/components/create/CalculationResult";
 import { SchedulePicker } from "@/components/create/SchedulePicker";
 import { TempRangeCard } from "@/components/create/TempRangeCard";
+import { ContainerRecommendationCard } from "@/components/create/ContainerRecommendationCard";
 import { CreateButtons } from "@/components/create/CreateButtons";
 import {
   PRODUCT_CATEGORIES,
@@ -17,6 +18,9 @@ import {
   type IceTypeKey,
 } from "@/lib/icepack/data";
 import { createShipment, createTrip } from "@/lib/icepack/services";
+import { getTravelTimeHours, getRoutingModes, getDefaultRoutingMode } from "@/lib/routing";
+import { withRetry, isNetworkError, getUserNetworkErrorMessage } from "@/lib/network";
+import type { PhotonFeature } from "@/lib/photon";
 
 import { useResponsiveFontSize } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
@@ -33,7 +37,7 @@ type StepErrors = Record<string, boolean>;
 
 const STEP1_REQUIRED = ["shipmentName"];
 const STEP2_REQUIRED = ["originLocation", "destinationLocation"];
-const STEP3_REQUIRED = ["cargoKg", "durationHours"];
+const STEP3_REQUIRED = ["weightPerContainer", "containerCount", "durationHours"];
 
 export function CreateForm() {
   const { isTablet } = useScreenDimensions();
@@ -45,7 +49,8 @@ export function CreateForm() {
 
   const [productId, setProductId] = useState(PRODUCT_CATEGORIES[0].id);
   const [shipmentName, setShipmentName] = useState("");
-  const [cargoKg, setCargoKg] = useState("");
+  const [weightPerContainer, setWeightPerContainer] = useState("");
+  const [containerCount, setContainerCount] = useState("");
   const [durationHours, setDurationHours] = useState("");
   const [originLocation, setOriginLocation] = useState("");
   const [destinationLocation, setDestinationLocation] = useState("");
@@ -55,41 +60,94 @@ export function CreateForm() {
   const [supplierName, setSupplierName] = useState("");
   const [scheduleDate, setScheduleDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [unitsPallets, setUnitsPallets] = useState("");
   const [selectedIceTypeKey, setSelectedIceTypeKey] = useState<IceTypeKey | null>(null);
 
+  const [originCoords, setOriginCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [destCoords, setDestCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isComputingRoute, setIsComputingRoute] = useState(false);
+  const [routeError, setRouteError] = useState(false);
+  const routeAbortRef = useRef<AbortController | null>(null);
+
+  const [routingMode, setRoutingMode] = useState(() => getDefaultRoutingMode());
+
   const profile = getProfileFor(productId);
+
+  useEffect(() => {
+    if (!originCoords || !destCoords) return;
+
+    if (routeAbortRef.current) {
+      routeAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    routeAbortRef.current = controller;
+
+    let cancelled = false;
+    setIsComputingRoute(true);
+    setRouteError(false);
+
+    (async () => {
+      try {
+        const hours = await getTravelTimeHours(
+          originCoords.lat, originCoords.lng,
+          destCoords.lat, destCoords.lng,
+          controller.signal,
+          routingMode,
+        );
+        if (cancelled) return;
+        setDurationHours(String(hours));
+        setRouteError(false);
+      } catch {
+        if (cancelled) return;
+        setRouteError(true);
+      } finally {
+        if (!cancelled) {
+          setIsComputingRoute(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [originCoords, destCoords, routingMode]);
+
   const displayName = shipmentName || "None";
 
+  const totalCargoKg = useMemo(
+    () => (Number(weightPerContainer) || 0) * (Number(containerCount) || 0),
+    [weightPerContainer, containerCount],
+  );
+
   const calc = useMemo(
-    () => calculateIce(Number(cargoKg) || 0, Number(durationHours) || 0, profile),
-    [cargoKg, durationHours, profile],
+    () => calculateIce(totalCargoKg, Number(durationHours) || 0, profile),
+    [totalCargoKg, durationHours, profile],
   );
 
   const finalIceCalc = useMemo(() => {
     if (selectedIceTypeKey) {
       const iceType = ICE_TYPES[selectedIceTypeKey];
       const { amountKg, meltRateKgPerHr, safeDurationHours } = calculateIceForType(
-        Number(cargoKg) || 0, Number(durationHours) || 0, Number(unitsPallets) || 0, iceType, profile,
+        totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, iceType, profile,
       );
       return { recommendedIceKg: amountKg, meltRateKgPerHr, safeDurationHours };
     }
     return calc;
-  }, [selectedIceTypeKey, cargoKg, durationHours, unitsPallets, profile, calc]);
+  }, [selectedIceTypeKey, totalCargoKg, durationHours, containerCount, profile, calc]);
 
   const iceDistribution = useMemo(
-    () => calculateIceDistribution(Number(cargoKg) || 0, Number(durationHours) || 0, Number(unitsPallets) || 0, productId, profile),
-    [cargoKg, durationHours, unitsPallets, productId, profile],
+    () => calculateIceDistribution(totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, productId, profile),
+    [totalCargoKg, durationHours, containerCount, productId, profile],
   );
 
-  const canSubmit = Number(cargoKg) > 0 && Number(durationHours) > 0;
+  const canSubmit = totalCargoKg > 0 && Number(durationHours) > 0;
   const [isCreating, setIsCreating] = useState(false);
 
   const fieldValues: Record<string, string> = {
     shipmentName,
     originLocation,
     destinationLocation,
-    cargoKg,
+    weightPerContainer,
+    containerCount,
     durationHours,
   };
 
@@ -139,18 +197,20 @@ export function CreateForm() {
       let tripId: number | null = null;
 
       if (startNow) {
-        const newTrip = await createTrip({
-          trip_name: displayName,
-          status: "active",
-          started_at: new Date().toISOString(),
-        });
+        const newTrip = await withRetry(() =>
+          createTrip({
+            trip_name: displayName,
+            status: "active",
+            started_at: new Date().toISOString(),
+          }),
+        );
         tripId = newTrip.id;
       }
 
       const shipmentInput: Record<string, unknown> = {
         shipment_name: displayName,
         cargo_category: productId,
-        cargo_kg: Number(cargoKg),
+        cargo_kg: totalCargoKg,
         duration_hours: Number(durationHours),
         target_temp_min_c: profile.tempMinC,
         target_temp_max_c: profile.tempMaxC,
@@ -167,34 +227,40 @@ export function CreateForm() {
         hs_code: hsCode || null,
         supplier_name: supplierName || null,
         schedule: scheduleDate?.toISOString() || null,
-        units_pallets: unitsPallets ? Number(unitsPallets) : null,
+        units_pallets: containerCount ? Math.round(Number(containerCount)) : null,
       };
       if (tripId !== null) {
         shipmentInput.trip_id = tripId;
       }
-      await createShipment(shipmentInput as any);
+      await withRetry(() => createShipment(shipmentInput as any));
 
       setStep(1);
       setErrors({});
       setProductId(PRODUCT_CATEGORIES[0].id);
       setShipmentName("");
-      setCargoKg("");
+      setWeightPerContainer("");
+      setContainerCount("");
       setDurationHours("");
       setOriginLocation("");
       setDestinationLocation("");
+      setOriginCoords(null);
+      setDestCoords(null);
+      setIsComputingRoute(false);
+      setRouteError(false);
+      setRoutingMode(getDefaultRoutingMode());
       setNotes("");
       setHsCode("");
       setSupplierName("");
       setScheduleDate(null);
-      setUnitsPallets("");
+      setContainerCount("");
       setSelectedIceTypeKey(null);
       setIsCreating(false);
 
       router.replace("/(tabs)/shipments");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to create shipment";
-      console.error("handleCreate:", msg, e);
-      Alert.alert("Error", msg);
+    } catch (e: unknown) {
+      const msg = getUserNetworkErrorMessage(e);
+      console.error("handleCreate:", msg, "| raw:", String(e ?? ""));
+      Alert.alert(isNetworkError(e) ? "No Internet Connection" : "Error", msg);
       setIsCreating(false);
     }
   };
@@ -359,6 +425,11 @@ export function CreateForm() {
               }}
             />
           </View>
+
+          <ContainerRecommendationCard
+            container={PRODUCT_CATEGORIES.find((p) => p.id === productId)!.container}
+            profile={profile.key}
+          />
         </View>
       )}
 
@@ -372,8 +443,11 @@ export function CreateForm() {
                 {fieldLabel("Origin")}
                 <LocationAutocomplete
                   value={originLocation}
-                  onValueChange={(v) => { setOriginLocation(v); clearFieldError("originLocation"); }}
-                  onLocationSelect={() => {}}
+                  onValueChange={(v) => { setOriginLocation(v); setOriginCoords(null); clearFieldError("originLocation"); }}
+                  onLocationSelect={(feature: PhotonFeature) => {
+                    const [lng, lat] = feature.geometry.coordinates;
+                    setOriginCoords({ lat, lng });
+                  }}
                   placeholder={errors.originLocation ? "Required — city or location" : "City or location"}
                 />
                 {errorText("originLocation")}
@@ -382,12 +456,88 @@ export function CreateForm() {
                 {fieldLabel("Destination")}
                 <LocationAutocomplete
                   value={destinationLocation}
-                  onValueChange={(v) => { setDestinationLocation(v); clearFieldError("destinationLocation"); }}
-                  onLocationSelect={() => {}}
+                  onValueChange={(v) => { setDestinationLocation(v); setDestCoords(null); clearFieldError("destinationLocation"); }}
+                  onLocationSelect={(feature: PhotonFeature) => {
+                    const [lng, lat] = feature.geometry.coordinates;
+                    setDestCoords({ lat, lng });
+                  }}
                   placeholder={errors.destinationLocation ? "Required — city or location" : "City or location"}
                 />
                 {errorText("destinationLocation")}
               </View>
+              {originCoords && destCoords && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    backgroundColor: routeError ? "#fef2f2" : isComputingRoute ? "#f0f9ff" : "#f0fdf4",
+                    borderRadius: 10,
+                    padding: 10,
+                    borderWidth: 1,
+                    borderColor: routeError ? "#fecaca" : isComputingRoute ? "#bae6fd" : "#bbf7d0",
+                  }}
+                >
+                  {routeError ? (
+                    <>
+                      <AlertCircle size={14} color="#dc2626" strokeWidth={2} />
+                      <Text style={{ fontSize: labelSize, color: "#dc2626", fontWeight: "500", flex: 1 }}>
+                        Could not compute route. Enter duration manually.
+                      </Text>
+                    </>
+                  ) : isComputingRoute ? (
+                    <Text style={{ fontSize: labelSize, color: "#0369a1", fontWeight: "500" }}>
+                      Calculating travel time...
+                    </Text>
+                  ) : (
+                    (() => {
+                      const totalMins = Math.round(Number(durationHours) * 60);
+                      const h = Math.floor(totalMins / 60);
+                      const m = totalMins % 60;
+                      const formatted = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                      return (
+                        <Text style={{ fontSize: labelSize, color: "#166534", fontWeight: "500" }}>
+                          Estimated travel: {formatted}
+                        </Text>
+                      );
+                    })()
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View>
+            {optionalLabel("Travel Mode")}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {getRoutingModes().map((m) => {
+                const active = routingMode === m.id;
+                return (
+                  <TouchableOpacity
+                    key={m.id}
+                    onPress={() => setRoutingMode(m.id)}
+                    activeOpacity={0.7}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      backgroundColor: active ? "#1a8ad4" : "#f4f8fa",
+                      borderWidth: 1,
+                      borderColor: active ? "#1a8ad4" : "#e8eef3",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: labelSize * 0.85,
+                        fontWeight: active ? "700" : "500",
+                        color: active ? "#fff" : "#587a94",
+                      }}
+                    >
+                      {m.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -475,42 +625,54 @@ export function CreateForm() {
             {requiredLabel("Cargo Details")}
             <View className="flex-row gap-3">
               <View className="flex-1">
-                {fieldLabel("Weight (kg)")}
+                {fieldLabel("Weight per container (kg)")}
                 <TextInput
-                  value={cargoKg}
-                  onChangeText={(v) => { setCargoKg(v); clearFieldError("cargoKg"); }}
+                  value={weightPerContainer}
+                  onChangeText={(v) => { setWeightPerContainer(v); clearFieldError("weightPerContainer"); }}
                   keyboardType="decimal-pad"
-                  placeholder={errors.cargoKg ? "Required" : "0"}
-                  placeholderTextColor={errors.cargoKg ? "#fca5a5" : "#9bb4c7"}
-                  style={inputStyle("cargoKg")}
+                  placeholder={errors.weightPerContainer ? "Required" : "0"}
+                  placeholderTextColor={errors.weightPerContainer ? "#fca5a5" : "#9bb4c7"}
+                  style={inputStyle("weightPerContainer")}
                 />
-                {errorText("cargoKg")}
+                {errorText("weightPerContainer")}
               </View>
               <View className="flex-1">
-                {fieldLabel("Duration (hrs)")}
+                {fieldLabel("Containers")}
                 <TextInput
-                  value={durationHours}
-                  onChangeText={(v) => { setDurationHours(v); clearFieldError("durationHours"); }}
-                  keyboardType="decimal-pad"
-                  placeholder={errors.durationHours ? "Required" : "0"}
-                  placeholderTextColor={errors.durationHours ? "#fca5a5" : "#9bb4c7"}
-                  style={inputStyle("durationHours")}
+                  value={containerCount}
+                  onChangeText={(v) => { setContainerCount(v.replace(/\D/g, "")); clearFieldError("containerCount"); }}
+                  keyboardType="number-pad"
+                  placeholder={errors.containerCount ? "Required" : "0"}
+                  placeholderTextColor={errors.containerCount ? "#fca5a5" : "#9bb4c7"}
+                  style={inputStyle("containerCount")}
                 />
-                {errorText("durationHours")}
+                {errorText("containerCount")}
               </View>
             </View>
-          </View>
-
-          <View>
-            {fieldLabel("Units / Pallets")}
-            <TextInput
-              value={unitsPallets}
-              onChangeText={setUnitsPallets}
-              keyboardType="number-pad"
-              placeholder="0"
-              placeholderTextColor="#9bb4c7"
-              style={inputStyle()}
-            />
+            {totalCargoKg > 0 && (
+              <Text
+                style={{
+                  fontSize: labelSize,
+                  color: "#1a8ad4",
+                  fontWeight: "600",
+                  marginTop: 6,
+                }}
+              >
+                Total weight: {totalCargoKg.toLocaleString()} kg
+              </Text>
+            )}
+            <View style={{ marginTop: 16 }}>
+              {fieldLabel("Duration (hrs)")}
+              <TextInput
+                value={durationHours}
+                onChangeText={(v) => { setDurationHours(v); clearFieldError("durationHours"); }}
+                keyboardType="decimal-pad"
+                placeholder={errors.durationHours ? "Required" : "0"}
+                placeholderTextColor={errors.durationHours ? "#fca5a5" : "#9bb4c7"}
+                style={inputStyle("durationHours")}
+              />
+              {errorText("durationHours")}
+            </View>
           </View>
 
           <View>
@@ -526,7 +688,7 @@ export function CreateForm() {
             />
           </View>
 
-          {selectedIceTypeKey == null && Number(cargoKg) > 0 && Number(durationHours) > 0 && (
+          {selectedIceTypeKey == null && totalCargoKg > 0 && Number(durationHours) > 0 && (
             <View
               style={{
                 flexDirection: "row",

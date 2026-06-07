@@ -52,7 +52,7 @@ export const STORAGE_PROFILES: Record<StorageProfileKey, StorageProfile> = {
     iceFactor: 1.1,
     meltBase: 3.2,
     tone: "sea-500",
-    note: "Freezer storage for meats, frozen seafood, frozen produce and many long‑term frozen items; used for export-grade frozen goods.",
+    note: "Freezer storage for meats, frozen seafood, frozen produce and many long-term frozen items; used for export-grade frozen goods.",
   },
   deep: {
     key: "deep",
@@ -63,9 +63,14 @@ export const STORAGE_PROFILES: Record<StorageProfileKey, StorageProfile> = {
     iceFactor: 1.6,
     meltBase: 4.1,
     tone: "sea-900",
-    note: "Ultra-low temperatures for pharmaceuticals, vaccines, and highly temperature‑sensitive biotech products.",
+    note: "Ultra-low temperatures for pharmaceuticals, vaccines, and highly temperature-sensitive biotech products.",
   },
 };
+
+export interface ContainerProfile {
+  name: string;
+  description: string;
+}
 
 export interface ProductCategory {
   id: CargoCategory;
@@ -73,6 +78,7 @@ export interface ProductCategory {
   icon: string;
   profile: StorageProfileKey;
   description: string;
+  container: ContainerProfile;
 }
 
 export const PRODUCT_CATEGORIES: ProductCategory[] = [
@@ -83,6 +89,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     profile: "freezer",
     description:
       "Imported meat for further processing; local dressed chicken; processed meat products for retail",
+    container: { name: "Reefer Container", description: "Export-grade frozen goods for long-haul cold chain" },
   },
   {
     id: "fish_aquaculture",
@@ -91,6 +98,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     profile: "chilled",
     description:
       "Tuna, sardines, shrimp, prawns, squid, mackerel, and other seafood",
+    container: { name: "Ice-Chilled Carrier", description: "Block and crushed ice for boat and local seafood distribution" },
   },
   {
     id: "dairy",
@@ -98,6 +106,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     icon: "Milk",
     profile: "chilled",
     description: "Ice cream, cheese, yoghurt, milk",
+    container: { name: "Modular Cold Box", description: "Stackable cold storage for dairy retail and QSR distribution" },
   },
   {
     id: "fruits_vegetables",
@@ -106,6 +115,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     profile: "ac",
     description:
       "Bananas, pineapples, mangoes, papayas, potatoes, onions, garlic, carrots, apples, grapes, pears, oranges, kiwi, and frozen vegetables",
+    container: { name: "Insulated Container", description: "Controlled ambient 16–24°C for fresh produce and export" },
   },
   {
     id: "other_food",
@@ -114,6 +124,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     profile: "chilled",
     description:
       "Frozen dough, cakes, bakery products, raw materials for quick service restaurants (QSRs)",
+    container: { name: "Blast Freezer Container", description: "Rapid freezing for dough, bakery, and QSR raw materials" },
   },
   {
     id: "pharma",
@@ -122,6 +133,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     profile: "deep",
     description:
       "Vaccines, biologics, temperature-sensitive drugs requiring ultra-low cold chain",
+    container: { name: "Pharma Container", description: "Ultra-low −30°C or lower for vaccines and biologics" },
   },
   {
     id: "electronics",
@@ -130,6 +142,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     profile: "ac",
     description:
       "Computers, components, and sensitive equipment requiring climate-controlled transport",
+    container: { name: "Insulated Container", description: "Climate-controlled for sensitive components and equipment" },
   },
   {
     id: "cosmetics",
@@ -138,6 +151,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     profile: "chilled",
     description:
       "Skincare, makeup, and beauty products requiring cool chain stability",
+    container: { name: "Reefer Container", description: "Temperature-controlled for skincare, makeup, and beauty products" },
   },
   {
     id: "agricultural_products",
@@ -146,6 +160,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     profile: "chilled",
     description:
       "Fresh produce, flowers, seeds, and other agricultural commodities",
+    container: { name: "Reefer Container", description: "Temperature-controlled for flowers, seeds, and fresh commodities" },
   },
 ];
 
@@ -304,6 +319,7 @@ export interface IceType {
   meltBase: number;
   meltRateRange: string;
   coverageFactor: number;
+  longevityMultiplier: number;
 }
 
 export const ICE_TYPES: Record<IceTypeKey, IceType> = {
@@ -317,6 +333,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     meltBase: 2.0,
     meltRateRange: "1.8 - 2.2",
     coverageFactor: 0.25,
+    longevityMultiplier: 1.0,
   },
   crushed: {
     key: "crushed",
@@ -328,6 +345,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     meltBase: 4.0,
     meltRateRange: "3.5 - 4.5",
     coverageFactor: 0.75,
+    longevityMultiplier: 0.7,
   },
   tube: {
     key: "tube",
@@ -339,6 +357,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     meltBase: 2.8,
     meltRateRange: "2.5 - 3.2",
     coverageFactor: 0.45,
+    longevityMultiplier: 0.85,
   },
   flake: {
     key: "flake",
@@ -350,6 +369,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     meltBase: 5.8,
     meltRateRange: "5.0 - 6.5",
     coverageFactor: 1.0,
+    longevityMultiplier: 0.5,
   },
   dry_ice: {
     key: "dry_ice",
@@ -361,6 +381,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     meltBase: 1.2,
     meltRateRange: "0.8 - 1.5",
     coverageFactor: 0.15,
+    longevityMultiplier: 1.2,
   },
 };
 
@@ -392,42 +413,163 @@ export interface IceDistribution {
   safeDurationHours: number;
 }
 
+export interface IceCalculationInput {
+  cargoKg: number;
+  palletsOrUnits: number;
+  durationHours: number;
+  iceType: IceType;
+  profile: StorageProfile;
+  weightPerPallet?: number;
+}
+
+export interface IceCalculationOutput {
+  amountKg: number;
+  meltRateKgPerHr: number;
+  safeDurationHours: number;
+  icePerPalletKg: number;
+  palletCount: number;
+}
+
 export function calculateIceForType(
   cargoKg: number,
   durationHours: number,
-  pallets: number,
+  palletsOrUnits: number,
   iceType: IceType,
   profile: StorageProfile,
-): { amountKg: number; meltRateKgPerHr: number; safeDurationHours: number } {
-  if (!cargoKg || !durationHours) return { amountKg: 0, meltRateKgPerHr: 0, safeDurationHours: 0 };
+  weightPerPallet?: number,
+): IceCalculationOutput {
+  if (!cargoKg || !durationHours || palletsOrUnits <= 0) {
+    return {
+      amountKg: 0,
+      meltRateKgPerHr: 0,
+      safeDurationHours: 0,
+      icePerPalletKg: 0,
+      palletCount: palletsOrUnits || 1,
+    };
+  }
 
-  const baseIce = cargoKg * profile.iceFactor * (durationHours / 24) * 1.25;
+  const validatedPallets = Math.max(1, palletsOrUnits);
 
-  let iceMultiplier = 1.0;
-  if (iceType.key === "flake") iceMultiplier = 1.4;
-  if (iceType.key === "crushed") iceMultiplier = 1.25;
-  if (iceType.key === "tube") iceMultiplier = 1.0;
-  if (iceType.key === "block") iceMultiplier = 0.85;
-  if (iceType.key === "dry_ice") iceMultiplier = 0.7;
+  const durationDays = durationHours / 24;
+  const baseIceNeed = cargoKg * profile.iceFactor * durationDays * 1.25;
 
-  const amountKg = round(baseIce * iceMultiplier * (1 + pallets * 0.02));
+  const longevityAdjustment = 1 / iceType.longevityMultiplier;
+
+  const coverageEfficiency = 1 - (iceType.coverageFactor * 0.15);
+
+  const iceTypeMultiplier = longevityAdjustment * coverageEfficiency;
+
+  const palletMultiplier = 1 + (validatedPallets - 1) * 0.04;
+
+  const amountKg = round(baseIceNeed * iceTypeMultiplier * palletMultiplier);
+
+  const icePerPalletKg = round(amountKg / validatedPallets);
+
   const meltRateKgPerHr = round((amountKg / 100) * iceType.meltBase);
-  const safeDurationHours = meltRateKgPerHr > 0 ? round(amountKg / meltRateKgPerHr) : 0;
-  return { amountKg, meltRateKgPerHr, safeDurationHours };
+
+  const safeDurationHours = meltRateKgPerHr > 0
+    ? round(amountKg / meltRateKgPerHr)
+    : 0;
+
+  return {
+    amountKg,
+    meltRateKgPerHr,
+    safeDurationHours,
+    icePerPalletKg,
+    palletCount: validatedPallets,
+  };
 }
 
 export function calculateIceDistribution(
   cargoKg: number,
   durationHours: number,
-  pallets: number,
+  palletsOrUnits: number,
   productId: string,
   profile: StorageProfile,
+  weightPerPallet?: number,
 ): IceDistribution[] {
   const types = getRecommendedIceTypes(productId);
   return types.map((iceType) => {
     const { amountKg, meltRateKgPerHr, safeDurationHours } = calculateIceForType(
-      cargoKg, durationHours, pallets, iceType, profile,
+      cargoKg, durationHours, palletsOrUnits, iceType, profile, weightPerPallet,
     );
     return { iceType, amountKg, meltRateKgPerHr, safeDurationHours };
   });
+}
+
+export function calculateIceWithPalletDetails(
+  palletCount: number,
+  weightPerPalletKg: number,
+  durationHours: number,
+  iceType: IceType,
+  profile: StorageProfile,
+): IceCalculationOutput {
+  const totalCargoKg = palletCount * weightPerPalletKg;
+  return calculateIceForType(
+    totalCargoKg,
+    durationHours,
+    palletCount,
+    iceType,
+    profile,
+    weightPerPalletKg,
+  );
+}
+
+export interface IceOptionDisplay {
+  iceType: IceType;
+  recommendedAmountKg: number;
+  meltRateKgPerHr: number;
+  safeDurationHours: number;
+  isRecommended: boolean;
+  prosCons: {
+    pros: string[];
+    cons: string[];
+  };
+}
+
+export function getIceTypeProsCons(iceType: IceType): { pros: string[]; cons: string[] } {
+  const prosCons: Record<IceTypeKey, { pros: string[]; cons: string[] }> = {
+    block: {
+      pros: ["Longest lasting", "Lowest melt rate", "Cost effective"],
+      cons: ["Poor surface contact", "Requires breaking", "Slow initial cooling"],
+    },
+    crushed: {
+      pros: ["Good surface contact", "Balanced melt rate", "Versatile application"],
+      cons: ["Shorter lasting than block/tube", "Can damage delicate products"],
+    },
+    tube: {
+      pros: ["Slower melt than crushed", "Good for longer trips", "Easy to handle"],
+      cons: ["Moderate surface coverage", "Higher cost than block"],
+    },
+    flake: {
+      pros: ["Maximum surface coverage", "Fastest cooling", "Gentle on delicate items"],
+      cons: ["Shortest lasting", "Highest melt rate", "Requires more ice for long trips"],
+    },
+    dry_ice: {
+      pros: ["Ultra-low temperatures", "No water residue", "Long lasting"],
+      cons: ["Expensive", "Sublimation (shrinkage)", "Handling hazards"],
+    },
+  };
+  return prosCons[iceType.key] || { pros: [], cons: [] };
+}
+
+export function getFormattedIceOptions(
+  cargoKg: number,
+  durationHours: number,
+  palletsOrUnits: number,
+  productId: string,
+  profile: StorageProfile,
+): IceOptionDisplay[] {
+  const distribution = calculateIceDistribution(
+    cargoKg, durationHours, palletsOrUnits, productId, profile,
+  );
+  const primaryType = getPrimaryIceType(productId);
+  return distribution.map((item) => ({
+    iceType: item.iceType,
+    recommendedAmountKg: item.amountKg,
+    meltRateKgPerHr: item.meltRateKgPerHr,
+    safeDurationHours: item.safeDurationHours,
+    isRecommended: item.iceType.key === primaryType.key,
+    prosCons: getIceTypeProsCons(item.iceType),
+  }));
 }

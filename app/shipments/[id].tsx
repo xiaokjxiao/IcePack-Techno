@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -240,7 +242,10 @@ export default function ShipmentDetailScreen() {
   const profile = getProfileFor(shipment.cargo_category);
 
   return (
-    <>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      className="flex-1"
+    >
       <ScrollView
         className="flex-1 bg-white"
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
@@ -747,6 +752,6 @@ export default function ShipmentDetailScreen() {
     />
 
       <ToastBanner toast={toast} />
-    </>
+    </KeyboardAvoidingView>
   );
 }

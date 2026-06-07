@@ -16,6 +16,8 @@ import type { Trip } from "@/lib/icepack/data";
 import { liveStateFor } from "@/lib/icepack/data";
 import { getShipmentsWithTrips } from "@/lib/icepack/services";
 import { getCurrentUser } from "@/lib/auth";
+import { CriticalBanner } from "@/components/ui/CriticalBanner";
+import { notifyCriticalShipments } from "@/lib/notifications";
 
 function toTrip(s: ShipmentView): Trip {
   return {
@@ -104,6 +106,22 @@ export default function HomeScreen() {
     }
     return { active, critical, completed, planned };
   }, [shipments]);
+
+  const criticalShipments = useMemo(
+    () => shipments.filter(isShipmentCritical),
+    [shipments],
+  );
+
+  const criticalNames = useMemo(
+    () => criticalShipments.map((s) => s.name),
+    [criticalShipments],
+  );
+
+  useEffect(() => {
+    if (criticalShipments.length > 0) {
+      notifyCriticalShipments(criticalShipments.length, criticalNames);
+    }
+  }, [criticalShipments.length > 0 ? criticalShipments.length : 0]);
 
   const statCards: { label: string; value: string; accent?: boolean }[] = [
     { label: "Active", value: String(tripCounts.active).padStart(2, "0") },
@@ -253,6 +271,15 @@ export default function HomeScreen() {
           </View>
         )}
       </LinearGradient>
+
+      {tripCounts.critical > 0 && (
+        <View style={{ marginTop: 16 }}>
+          <CriticalBanner
+            count={tripCounts.critical}
+            firstName={criticalNames[0] ?? ""}
+          />
+        </View>
+      )}
 
       {loading ? (
         <ActivityIndicator
