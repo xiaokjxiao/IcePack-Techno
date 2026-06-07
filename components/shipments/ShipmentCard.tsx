@@ -2,7 +2,7 @@ import { ProductIcon } from "@/components/ui/ProductIcon";
 import { useResponsiveFontSize } from "@/hooks/use-responsive-size";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 import type { CargoCategory, RiskLevel, TripStatus } from "@/lib/icepack/data";
-import { getProduct, liveStateFor } from "@/lib/icepack/data";
+import { getProduct, liveStateFor, formatHours } from "@/lib/icepack/data";
 import { router } from "expo-router";
 import { Check, Layers } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
@@ -373,8 +373,8 @@ export function ShipmentCard({
             label="Duration"
             value={
               isCancelled && live
-                ? `${live.elapsedHours}h`
-                : `${shipment.durationHours}h`
+                ? formatHours(live.elapsedHours)
+                : formatHours(shipment.durationHours)
             }
           />
           <Cell

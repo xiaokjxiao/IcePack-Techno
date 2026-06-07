@@ -2,7 +2,7 @@ import React from "react";
 import { TouchableOpacity, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { Send, ArrowRight } from "lucide-react-native";
+import { Send } from "lucide-react-native";
 import { useScreenDimensions } from "@/hooks/use-screen-dimensions";
 
 interface DepartureEntry {

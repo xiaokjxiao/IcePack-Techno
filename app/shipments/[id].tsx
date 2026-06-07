@@ -11,7 +11,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft, Trash2, Package, FileText, Thermometer } from "lucide-react-native";
+import { Play, CheckCircle2, XCircle, Gauge, ChevronLeft, Trash2, Package, FileText, Thermometer, Clock } from "lucide-react-native";
 import { EditableField } from "@/components/ui/EditableField";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast, ToastBanner } from "@/components/ui/toast";
@@ -25,12 +25,15 @@ import type { Database } from "@/lib/database.types";
 import {
   getProduct,
   getProfileFor,
+  PRODUCT_CATEGORIES,
   calculateIceDistribution,
+  formatHours,
   type IceTypeKey,
   type TripStatus,
 } from "@/lib/icepack/data";
 import { ProductIcon } from "@/components/ui/ProductIcon";
 import { CalculationResult } from "@/components/create/CalculationResult";
+import { ContainerRecommendationCard } from "@/components/create/ContainerRecommendationCard";
 import {
   getShipment,
   getTrip,
@@ -42,6 +45,27 @@ import {
 
 type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
 type TripRow = Database["public"]["Tables"]["trips"]["Row"];
+
+const STATUS_COLORS: Record<string, string> = {
+  active: "#14b8a6",
+  completed: "#22c55e",
+  cancelled: "#ef4444",
+  planned: "#06b6d4",
+};
+
+const STATUS_BG_COLORS: Record<string, string> = {
+  active: "#d1faf5",
+  completed: "#dcfce7",
+  cancelled: "#fee2e2",
+  planned: "#cffafe",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  completed: "Delivered",
+  cancelled: "Cancelled",
+  planned: "Planned",
+};
 
 function Info({
   label,
@@ -262,188 +286,108 @@ export default function ShipmentDetailScreen() {
           paddingTop: insets.top + 16,
         }}
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <TouchableOpacity
             onPress={() => router.back()}
             activeOpacity={0.7}
-            style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              paddingVertical: 4,
+            }}
           >
             <ChevronLeft size={labelSize + 4} color="rgba(255,255,255,0.7)" strokeWidth={2} />
             <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>
               Back
             </Text>
           </TouchableOpacity>
-          {!isTracker && (
-            <View style={{ flexDirection: "row", gap: 16 }}>
-              <TouchableOpacity
-                onPress={promptDelete}
-                activeOpacity={0.7}
-                style={{ padding: 4 }}
-              >
-                <Trash2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
 
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <ProductIcon name={product.icon} size={titleSize} color="white" />
-            <View style={{ flex: 1 }}>
-              {isTracker ? (
-                <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}>
-                  {shipment.shipment_name}
-                </Text>
-              ) : (
-                <EditableField
-                  value={shipment.shipment_name}
-                  onSave={handleSaveName}
-                  fontSize={titleSize}
-                />
-              )}
-              <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>
-                {product.label}
-              </Text>
-            </View>
-          </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-            marginTop: 10,
-          }}
-        >
-          <View
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 3,
-              borderRadius: 12,
-              backgroundColor: shipment.status === "active"
-                ? "rgba(20, 184, 166, 0.2)"
-                : shipment.status === "planned"
-                  ? "rgba(6, 182, 212, 0.2)"
-                  : shipment.status === "completed"
-                    ? "rgba(34, 197, 94, 0.2)"
-                    : "rgba(148, 163, 184, 0.2)",
-            }}
-          >
-            <Text
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View
               style={{
-                fontSize: labelSize * 0.8,
-                fontWeight: "600",
-                color: shipment.status === "active" ? "#5eead4" : shipment.status === "planned" ? "#67e8f9" : shipment.status === "completed" ? "#86efac" : "#cbd5e1",
-                textTransform: "uppercase",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 6,
+                backgroundColor: STATUS_COLORS[shipment.status] + "25",
               }}
             >
-              {shipment.status}
+              <Text style={{ fontSize: labelSize * 0.8, fontWeight: "700", color: "white", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                {STATUS_LABELS[shipment.status] ?? shipment.status}
+              </Text>
+            </View>
+            {!isTracker && (
+              <TouchableOpacity onPress={promptDelete} activeOpacity={0.7} style={{ padding: 4 }}>
+                <Trash2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 20 }}>
+          <ProductIcon name={product.icon} size={titleSize} color="white" />
+          <View style={{ flex: 1 }}>
+            {isTracker ? (
+              <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}>
+                {shipment.shipment_name}
+              </Text>
+            ) : (
+              <EditableField
+                value={shipment.shipment_name}
+                onSave={handleSaveName}
+                fontSize={titleSize}
+              />
+            )}
+            <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>
+              {product.label}
             </Text>
           </View>
-          {trip && (
-            <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.6)" }}>
-              Trip: {trip.trip_name}
-            </Text>
-          )}
         </View>
+
+        <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Package size={12} color="rgba(255,255,255,0.5)" />
+              <Text style={{ fontSize: labelSize * 0.75, color: "rgba(255,255,255,0.5)", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                Cargo
+              </Text>
+            </View>
+            <Text style={{ fontSize: labelSize * 1.2, fontWeight: "700", color: "white" }}>
+              {shipment.cargo_kg} kg
+            </Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Clock size={12} color="rgba(255,255,255,0.5)" />
+              <Text style={{ fontSize: labelSize * 0.75, color: "rgba(255,255,255,0.5)", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                Duration
+              </Text>
+            </View>
+            <Text style={{ fontSize: labelSize * 1.2, fontWeight: "700", color: "white" }}>
+              {formatHours(shipment.duration_hours)}
+            </Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Clock size={12} color="rgba(255,255,255,0.5)" />
+              <Text style={{ fontSize: labelSize * 0.75, color: "rgba(255,255,255,0.5)", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                Status
+              </Text>
+            </View>
+            <Text style={{ fontSize: labelSize * 1.2, fontWeight: "700", color: STATUS_COLORS[shipment.status] ?? "white" }}>
+              {STATUS_LABELS[shipment.status] ?? shipment.status}
+            </Text>
+          </View>
+        </View>
+
+        {trip && (
+          <Text style={{ fontSize: labelSize * 0.85, color: "rgba(255,255,255,0.45)", marginTop: 12 }}>
+            Part of trip: {trip.trip_name}
+          </Text>
+        )}
       </LinearGradient>
 
       <View style={{ paddingHorizontal: padding, paddingTop: padding, gap: 16 }}>
-        {/* Cargo Info */}
-        <View
-          style={{
-            backgroundColor: "white",
-            borderRadius: 16,
-            padding: isTablet ? 20 : 16,
-            borderWidth: 1,
-            borderColor: "#e8eef3",
-            shadowColor: "#0b2540",
-            shadowOpacity: 0.04,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 2,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
-            <Package size={16} color="#587a94" strokeWidth={1.5} />
-            <Text
-              style={{
-                fontSize: labelSize * 0.9,
-                fontWeight: "600",
-                color: "#587a94",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-              }}
-            >
-              Cargo Info
-            </Text>
-          </View>
-          <View style={{ gap: 10 }}>
-            <Info label="Cargo" value={`${shipment.cargo_kg} kg`} />
-            <Info label="Duration" value={`${shipment.duration_hours} hrs`} />
-
-            {shipment.origin_location && (
-              <Info label="Origin" value={shipment.origin_location} alignTop />
-            )}
-            {shipment.destination_location && (
-              <Info label="Destination" value={shipment.destination_location} alignTop />
-            )}
-          </View>
-        </View>
-
-        {/* Customs & Logistics */}
-        {(shipment.hs_code || shipment.supplier_name || shipment.schedule || shipment.units_pallets) && (
-          <View
-            style={{
-              backgroundColor: "white",
-              borderRadius: 16,
-              padding: isTablet ? 20 : 16,
-              borderWidth: 1,
-              borderColor: "#e8eef3",
-              shadowColor: "#0b2540",
-              shadowOpacity: 0.04,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 2,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
-              <FileText size={16} color="#587a94" strokeWidth={1.5} />
-              <Text
-                style={{
-                  fontSize: labelSize * 0.9,
-                  fontWeight: "600",
-                  color: "#587a94",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}
-              >
-                Customs & Logistics
-              </Text>
-            </View>
-            <View style={{ gap: 10 }}>
-              {shipment.hs_code && (
-                <Info label="HS Code" value={shipment.hs_code} />
-              )}
-              {shipment.supplier_name && (
-                <Info label="Supplier" value={shipment.supplier_name} />
-              )}
-              {shipment.schedule && (
-                <Info
-                  label="Schedule"
-                  value={new Date(shipment.schedule).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                />
-              )}
-              {shipment.units_pallets != null && (
-                <Info label="Units / Pallets" value={String(shipment.units_pallets)} />
-              )}
-            </View>
-          </View>
-        )}
-
         {/* Storage Profile */}
         <View
           style={{
@@ -476,12 +420,108 @@ export default function ShipmentDetailScreen() {
           <View style={{ gap: 10 }}>
             <Info label="Type" value={profile.label} />
             <Info label="Range" value={profile.range} />
+            <Info label="Target Temp" value={`${shipment.target_temp_min_c ?? profile.tempMinC}°C`} />
             <Info label="Melt Factor" value={`${profile.iceFactor} kg/kg·day`} />
             <Text style={{ fontSize: labelSize * 0.85, color: "#9bb4c7", marginTop: 4 }}>
               {profile.note}
             </Text>
           </View>
         </View>
+
+        {/* Container Recommendation */}
+        <ContainerRecommendationCard
+          container={PRODUCT_CATEGORIES.find((p) => p.id === product.id)!.container}
+          profile={profile.key}
+        />
+
+        {/* Route Info */}
+        <View
+          style={{
+            backgroundColor: "white",
+            borderRadius: 16,
+            padding: isTablet ? 20 : 16,
+            borderWidth: 1,
+            borderColor: "#e8eef3",
+            shadowColor: "#0b2540",
+            shadowOpacity: 0.04,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 2,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <Package size={16} color="#587a94" strokeWidth={1.5} />
+            <Text
+              style={{
+                fontSize: labelSize * 0.9,
+                fontWeight: "600",
+                color: "#587a94",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              Route & Cargo
+            </Text>
+          </View>
+          <View style={{ gap: 10 }}>
+            <Info label="Duration" value={formatHours(shipment.duration_hours)} />
+            <Info label="Cargo" value={`${shipment.cargo_kg} kg`} />
+            {shipment.units_pallets != null && (
+              <Info label="Containers" value={String(shipment.units_pallets)} />
+            )}
+            {shipment.origin_location && (
+              <Info label="Origin" value={shipment.origin_location} alignTop />
+            )}
+            {shipment.destination_location && (
+              <Info label="Destination" value={shipment.destination_location} alignTop />
+            )}
+          </View>
+        </View>
+
+        {/* Schedule */}
+        {shipment.schedule && (
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 16,
+              padding: isTablet ? 20 : 16,
+              borderWidth: 1,
+              borderColor: "#e8eef3",
+              shadowColor: "#0b2540",
+              shadowOpacity: 0.04,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 2,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <FileText size={16} color="#587a94" strokeWidth={1.5} />
+              <Text
+                style={{
+                  fontSize: labelSize * 0.9,
+                  fontWeight: "600",
+                  color: "#587a94",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                Schedule
+              </Text>
+            </View>
+            <Info
+              label="Departure"
+              value={new Date(shipment.schedule).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              }) + ", " + new Date(shipment.schedule).toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              })}
+            />
+          </View>
+        )}
 
         {/* Ice Calculation */}
         {shipment.recommended_ice_kg != null && (
@@ -495,9 +535,50 @@ export default function ShipmentDetailScreen() {
               shipment.units_pallets ?? 0,
               shipment.cargo_category,
               profile,
+              undefined,
+              undefined,
+              shipment.target_temp_min_c ?? undefined,
+              (shipment.duration_hours ?? 0) * 0.2,
             )}
             selectedIceTypeKey={shipment.ice_type as IceTypeKey | undefined ?? null}
           />
+        )}
+
+        {/* Customs & Supplier */}
+        {(shipment.hs_code || shipment.supplier_name) && (
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 16,
+              padding: isTablet ? 20 : 16,
+              borderWidth: 1,
+              borderColor: "#e8eef3",
+              shadowColor: "#0b2540",
+              shadowOpacity: 0.04,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 2,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <FileText size={16} color="#587a94" strokeWidth={1.5} />
+              <Text
+                style={{
+                  fontSize: labelSize * 0.9,
+                  fontWeight: "600",
+                  color: "#587a94",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                Customs & Supplier
+              </Text>
+            </View>
+            <View style={{ gap: 10 }}>
+              {shipment.hs_code && <Info label="HS Code" value={shipment.hs_code} />}
+              {shipment.supplier_name && <Info label="Supplier" value={shipment.supplier_name} />}
+            </View>
+          </View>
         )}
 
         {/* Notes */}

@@ -15,6 +15,8 @@ export interface StorageProfile {
   iceFactor: number;
   /** Base melt rate kg/hr per 100kg ice in ambient ~28C */
   meltBase: number;
+  /** Melt rate kg/hr per container in ambient ~28C */
+  perContainerMeltBase: number;
   /** Tailwind-safe semantic color token name */
   tone: "ice-cyan" | "ice-teal" | "sea-500" | "sea-900";
   note: string;
@@ -29,6 +31,7 @@ export const STORAGE_PROFILES: Record<StorageProfileKey, StorageProfile> = {
     tempMaxC: 24,
     iceFactor: 0.15,
     meltBase: 0.8,
+    perContainerMeltBase: 0.08,
     tone: "ice-cyan",
     note: "Air‑conditioned storage for produce, confectionery, some dairy powders and electronics requiring mild climate control.",
   },
@@ -40,6 +43,7 @@ export const STORAGE_PROFILES: Record<StorageProfileKey, StorageProfile> = {
     tempMaxC: 14,
     iceFactor: 0.6,
     meltBase: 2.4,
+    perContainerMeltBase: 0.24,
     tone: "ice-teal",
     note: "Chilled storage for fresh milk, cheeses, yogurts, fresh meat/poultry (short term), fresh fish, vegetables and other perishables.",
   },
@@ -51,6 +55,7 @@ export const STORAGE_PROFILES: Record<StorageProfileKey, StorageProfile> = {
     tempMaxC: -12,
     iceFactor: 1.1,
     meltBase: 3.2,
+    perContainerMeltBase: 0.32,
     tone: "sea-500",
     note: "Freezer storage for meats, frozen seafood, frozen produce and many long-term frozen items; used for export-grade frozen goods.",
   },
@@ -62,6 +67,7 @@ export const STORAGE_PROFILES: Record<StorageProfileKey, StorageProfile> = {
     tempMaxC: -30,
     iceFactor: 1.6,
     meltBase: 4.1,
+    perContainerMeltBase: 0.41,
     tone: "sea-900",
     note: "Ultra-low temperatures for pharmaceuticals, vaccines, and highly temperature-sensitive biotech products.",
   },
@@ -233,20 +239,25 @@ export function calculateIce(
   profile: StorageProfile,
   ambientTempC?: number,
   targetTempC?: number,
+  containerCount?: number,
+  stopoverHours?: number,
 ): CalcOutput {
   if (!cargoKg || !durationHours) {
     return { recommendedIceKg: 0, meltRateKgPerHr: 0, safeDurationHours: 0 };
   }
+  const effectiveDurationHours = durationHours + (stopoverHours ?? 0);
+  const containers = containerCount ?? 1;
   const baseDaily = cargoKg * profile.iceFactor;
   const recommendedIceKg = Math.max(
-    cargoKg * profile.iceFactor * (durationHours / 24) * 1.25,
+    cargoKg * profile.iceFactor * (effectiveDurationHours / 24) * 1.25,
     baseDaily * 0.4,
   );
-  const effectiveMeltBase = ambientTempC != null
-    ? adjustMeltBaseForTemp(profile.meltBase, ambientTempC, targetTempC ?? profile.tempMaxC)
-    : profile.meltBase;
-  const meltRateKgPerHr = (recommendedIceKg / 100) * effectiveMeltBase;
-  const safeDurationHours = recommendedIceKg / Math.max(meltRateKgPerHr, 0.1);
+  const perContainerMelt = ambientTempC != null
+    ? adjustMeltBaseForTemp(profile.perContainerMeltBase, ambientTempC, targetTempC ?? profile.tempMaxC)
+    : profile.perContainerMeltBase;
+  const meltRateKgPerHr = containers * perContainerMelt;
+  const icePerContainer = recommendedIceKg / containers;
+  const safeDurationHours = icePerContainer / Math.max(perContainerMelt, 0.01);
   return {
     recommendedIceKg: round(recommendedIceKg),
     meltRateKgPerHr: round(meltRateKgPerHr),
@@ -336,6 +347,8 @@ export interface IceType {
   icon: string;
   meltBase: number;
   meltRateRange: string;
+  /** Melt rate kg/hr per container in ambient ~28C */
+  perContainerMelt: number;
   coverageFactor: number;
   longevityMultiplier: number;
 }
@@ -350,6 +363,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     icon: "IceCube",
     meltBase: 2.0,
     meltRateRange: "1.8 - 2.2",
+    perContainerMelt: 0.20,
     coverageFactor: 0.25,
     longevityMultiplier: 1.0,
   },
@@ -362,6 +376,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     icon: "IceCube",
     meltBase: 4.0,
     meltRateRange: "3.5 - 4.5",
+    perContainerMelt: 0.40,
     coverageFactor: 0.75,
     longevityMultiplier: 0.7,
   },
@@ -374,6 +389,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     icon: "IceCube",
     meltBase: 2.8,
     meltRateRange: "2.5 - 3.2",
+    perContainerMelt: 0.28,
     coverageFactor: 0.45,
     longevityMultiplier: 0.85,
   },
@@ -386,6 +402,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     icon: "IceCube",
     meltBase: 5.8,
     meltRateRange: "5.0 - 6.5",
+    perContainerMelt: 0.58,
     coverageFactor: 1.0,
     longevityMultiplier: 0.5,
   },
@@ -398,6 +415,7 @@ export const ICE_TYPES: Record<IceTypeKey, IceType> = {
     icon: "IceCube",
     meltBase: 1.2,
     meltRateRange: "0.8 - 1.5",
+    perContainerMelt: 0.12,
     coverageFactor: 0.15,
     longevityMultiplier: 1.2,
   },
@@ -457,6 +475,7 @@ export function calculateIceForType(
   weightPerPallet?: number,
   ambientTempC?: number,
   targetTempC?: number,
+  stopoverHours?: number,
 ): IceCalculationOutput {
   if (!cargoKg || !durationHours || palletsOrUnits <= 0) {
     return {
@@ -468,9 +487,10 @@ export function calculateIceForType(
     };
   }
 
+  const effectiveDurationHours = durationHours + (stopoverHours ?? 0);
   const validatedPallets = Math.max(1, palletsOrUnits);
 
-  const durationDays = durationHours / 24;
+  const durationDays = effectiveDurationHours / 24;
   const baseIceNeed = cargoKg * profile.iceFactor * durationDays * 1.25;
 
   const longevityAdjustment = 1 / iceType.longevityMultiplier;
@@ -485,14 +505,14 @@ export function calculateIceForType(
 
   const icePerPalletKg = round(amountKg / validatedPallets);
 
-  const effectiveMeltBase = ambientTempC != null
-    ? adjustMeltBaseForTemp(iceType.meltBase, ambientTempC, targetTempC ?? profile.tempMaxC)
-    : iceType.meltBase;
+  const effectivePerContainerMelt = ambientTempC != null
+    ? adjustMeltBaseForTemp(iceType.perContainerMelt, ambientTempC, targetTempC ?? profile.tempMaxC)
+    : iceType.perContainerMelt;
 
-  const meltRateKgPerHr = round((amountKg / 100) * effectiveMeltBase);
+  const meltRateKgPerHr = round(validatedPallets * effectivePerContainerMelt);
 
-  const safeDurationHours = meltRateKgPerHr > 0
-    ? round(amountKg / meltRateKgPerHr)
+  const safeDurationHours = effectivePerContainerMelt > 0
+    ? round(icePerPalletKg / effectivePerContainerMelt)
     : 0;
 
   return {
@@ -513,11 +533,12 @@ export function calculateIceDistribution(
   weightPerPallet?: number,
   ambientTempC?: number,
   targetTempC?: number,
+  stopoverHours?: number,
 ): IceDistribution[] {
   const types = getRecommendedIceTypes(productId);
   return types.map((iceType) => {
     const { amountKg, meltRateKgPerHr, safeDurationHours } = calculateIceForType(
-      cargoKg, durationHours, palletsOrUnits, iceType, profile, weightPerPallet, ambientTempC, targetTempC,
+      cargoKg, durationHours, palletsOrUnits, iceType, profile, weightPerPallet, ambientTempC, targetTempC, stopoverHours,
     );
     return { iceType, amountKg, meltRateKgPerHr, safeDurationHours };
   });
@@ -531,6 +552,7 @@ export function calculateIceWithPalletDetails(
   profile: StorageProfile,
   ambientTempC?: number,
   targetTempC?: number,
+  stopoverHours?: number,
 ): IceCalculationOutput {
   const totalCargoKg = palletCount * weightPerPalletKg;
   return calculateIceForType(
@@ -542,6 +564,7 @@ export function calculateIceWithPalletDetails(
     weightPerPalletKg,
     ambientTempC,
     targetTempC,
+    stopoverHours,
   );
 }
 

@@ -71,9 +71,19 @@ export function CreateForm() {
 
   const [routingMode, setRoutingMode] = useState(() => getDefaultRoutingMode());
   const [routeWeather, setRouteWeather] = useState<RouteWeather | null>(null);
+  const [stopoverHours, setStopoverHours] = useState("");
 
   const profile = getProfileFor(productId);
   const [targetTempC, setTargetTempC] = useState(profile.tempMinC);
+
+  function formatDurationDisplay(hours: number): string {
+    if (hours <= 0) return "—";
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  }
 
   useEffect(() => {
     setTargetTempC(getProfileFor(productId).tempMinC);
@@ -109,6 +119,7 @@ export function CreateForm() {
         ]);
         if (cancelled) return;
         setDurationHours(String(hours));
+        setStopoverHours(String(Math.round(hours * 0.2 * 10) / 10));
         setRouteWeather(weather);
         setRouteError(false);
       } catch {
@@ -126,6 +137,13 @@ export function CreateForm() {
     };
   }, [originCoords, destCoords, routingMode]);
 
+  useEffect(() => {
+    const d = Number(durationHours);
+    if (d > 0) {
+      setStopoverHours(String(Math.round(d * 0.2 * 10) / 10));
+    }
+  }, [durationHours]);
+
   const displayName = shipmentName || "None";
 
   const totalCargoKg = useMemo(
@@ -134,24 +152,24 @@ export function CreateForm() {
   );
 
   const calc = useMemo(
-    () => calculateIce(totalCargoKg, Number(durationHours) || 0, profile, routeWeather?.avgTempC, targetTempC),
-    [totalCargoKg, durationHours, profile, routeWeather?.avgTempC, targetTempC],
+    () => calculateIce(totalCargoKg, Number(durationHours) || 0, profile, routeWeather?.avgTempC, targetTempC, Number(containerCount) || 0, Number(stopoverHours) || 0),
+    [totalCargoKg, durationHours, profile, routeWeather?.avgTempC, targetTempC, containerCount, stopoverHours],
   );
 
   const finalIceCalc = useMemo(() => {
     if (selectedIceTypeKey) {
       const iceType = ICE_TYPES[selectedIceTypeKey];
       const { amountKg, meltRateKgPerHr, safeDurationHours } = calculateIceForType(
-        totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, iceType, profile, undefined, routeWeather?.avgTempC, targetTempC,
+        totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, iceType, profile, undefined, routeWeather?.avgTempC, targetTempC, Number(stopoverHours) || 0,
       );
       return { recommendedIceKg: amountKg, meltRateKgPerHr, safeDurationHours };
     }
     return calc;
-  }, [selectedIceTypeKey, totalCargoKg, durationHours, containerCount, profile, calc, routeWeather?.avgTempC, targetTempC]);
+  }, [selectedIceTypeKey, totalCargoKg, durationHours, containerCount, profile, calc, routeWeather?.avgTempC, targetTempC, stopoverHours]);
 
   const iceDistribution = useMemo(
-    () => calculateIceDistribution(totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, productId, profile, undefined, routeWeather?.avgTempC, targetTempC),
-    [totalCargoKg, durationHours, containerCount, productId, profile, routeWeather?.avgTempC, targetTempC],
+    () => calculateIceDistribution(totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, productId, profile, undefined, routeWeather?.avgTempC, targetTempC, Number(stopoverHours) || 0),
+    [totalCargoKg, durationHours, containerCount, productId, profile, routeWeather?.avgTempC, targetTempC, stopoverHours],
   );
 
   const canSubmit = totalCargoKg > 0 && Number(durationHours) > 0;
@@ -263,6 +281,7 @@ export function CreateForm() {
       setIsComputingRoute(false);
       setRouteError(false);
       setRouteWeather(null);
+      setStopoverHours("");
       setRoutingMode(getDefaultRoutingMode());
       setNotes("");
       setHsCode("");
@@ -563,13 +582,30 @@ export function CreateForm() {
                       const m = totalMins % 60;
                       const formatted = h > 0 ? `${h}h ${m}m` : `${m}m`;
                       return (
-                        <Text style={{ fontSize: labelSize, color: "#166534", fontWeight: "500" }}>
-                          Estimated travel: {formatted}
-                        </Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: labelSize, color: "#166534", fontWeight: "500" }}>
+                            Estimated travel: {formatted}
+                          </Text>
+                          {Number(stopoverHours) > 0 && (
+                            <Text style={{ fontSize: labelSize * 0.7, color: "#9bb4c7", marginTop: 2 }}>
+                              +{Number(stopoverHours).toFixed(1)}h stopover buffer (20%)
+                            </Text>
+                          )}
+                        </View>
                       );
                     })()
                   )}
                 </View>
+              )}
+              {routeError && (
+                <TextInput
+                  value={durationHours}
+                  onChangeText={(v) => { setDurationHours(v); clearFieldError("durationHours"); }}
+                  keyboardType="decimal-pad"
+                  placeholder="Enter estimated hours"
+                  placeholderTextColor="#9bb4c7"
+                  style={inputStyle("durationHours")}
+                />
               )}
             </View>
           </View>
@@ -773,16 +809,36 @@ export function CreateForm() {
               </Text>
             )}
             <View style={{ marginTop: 16 }}>
-              {fieldLabel("Duration (hrs)")}
-              <TextInput
-                value={durationHours}
-                onChangeText={(v) => { setDurationHours(v); clearFieldError("durationHours"); }}
-                keyboardType="decimal-pad"
-                placeholder={errors.durationHours ? "Required" : "0"}
-                placeholderTextColor={errors.durationHours ? "#fca5a5" : "#9bb4c7"}
-                style={inputStyle("durationHours")}
-              />
-              {errorText("durationHours")}
+              {fieldLabel("Duration")}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#f4f8fa",
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: "#e8eef3",
+                  paddingHorizontal: 14,
+                  paddingVertical: isTablet ? 14 : 12,
+                  gap: 8,
+                }}
+              >
+                <Text style={{ fontSize: inputSize, color: "#0b2540", fontWeight: "600" }}>
+                  {formatDurationDisplay(Number(durationHours) || 0)}
+                </Text>
+                {Number(stopoverHours) > 0 && (
+                  <>
+                    <Text style={{ fontSize: inputSize, color: "#9bb4c7" }}>+</Text>
+                    <Text style={{ fontSize: inputSize, color: "#f59e0b", fontWeight: "600" }}>
+                      {formatDurationDisplay(Number(stopoverHours))} buffer
+                    </Text>
+                    <Text style={{ fontSize: inputSize, color: "#9bb4c7" }}>=</Text>
+                    <Text style={{ fontSize: inputSize, color: "#0b2540", fontWeight: "700" }}>
+                      {formatDurationDisplay((Number(durationHours) || 0) + (Number(stopoverHours) || 0))} total
+                    </Text>
+                  </>
+                )}
+              </View>
             </View>
           </View>
 

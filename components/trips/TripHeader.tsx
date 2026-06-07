@@ -77,7 +77,7 @@ export function TripHeader({
 
   const durationText = derivedStatus === "active"
     ? formatHours(liveStateFor(trip).elapsedHours)
-    : `${trip.durationHours}h`;
+    : formatHours(trip.durationHours);
 
   const handleToggle = () => {
     if (Platform.OS !== "web") {
@@ -100,8 +100,9 @@ export function TripHeader({
           borderTopRightRadius: 12,
           borderBottomLeftRadius: isExpanded ? 0 : 12,
           borderBottomRightRadius: isExpanded ? 0 : 12,
-          borderWidth: 1,
-          borderColor: "#f0f4f8",
+          borderWidth: 1.5,
+          borderColor: statusColor + "80",
+          borderLeftWidth: 4,
           shadowColor: "#0b2540",
           shadowOpacity: 0.05,
           shadowRadius: 8,
@@ -116,33 +117,29 @@ export function TripHeader({
                 {trip.name}
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={{ fontSize: smSize, color: "#64748b" }}>
-                  Shipment
-                </Text>
                 <View
                   style={{
-                    paddingHorizontal: 5,
-                    paddingVertical: 2,
-                    borderRadius: 5,
-                    backgroundColor: "#dbeafe",
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: statusColor,
                   }}
-                >
-                  <Text style={{ fontSize: xsSize, fontWeight: "600", color: "#0284c7" }}>
-                    {shipments.length}
-                  </Text>
-                </View>
+                />
+                <Text style={{ fontSize: smSize, color: "#64748b" }}>
+                  {shipments.length} {shipments.length === 1 ? "shipment" : "shipments"}
+                </Text>
               </View>
             </View>
 
             <View
               style={{
-                paddingHorizontal: 8,
+                paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: 6,
                 backgroundColor: statusBgColor,
               }}
             >
-              <Text style={{ fontSize: xsSize, fontWeight: "600", color: statusColor, textTransform: "uppercase" }}>
+              <Text style={{ fontSize: xsSize, fontWeight: "700", color: statusColor, textTransform: "uppercase", letterSpacing: 0.5 }}>
                 {statusLabel}
               </Text>
             </View>
@@ -150,7 +147,7 @@ export function TripHeader({
 
           <View style={{ flexDirection: "row", gap: 8 }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: xsSize, color: "#94a3b8", fontWeight: "600", marginBottom: 2, textTransform: "uppercase" }}>
+              <Text style={{ fontSize: xsSize, color: "#94a3b8", fontWeight: "600", marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.3 }}>
                 Items
               </Text>
               <Text style={{ fontSize: smSize, fontWeight: "700", color: "#0f1419" }}>
@@ -158,7 +155,7 @@ export function TripHeader({
               </Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: xsSize, color: "#94a3b8", fontWeight: "600", marginBottom: 2, textTransform: "uppercase" }}>
+              <Text style={{ fontSize: xsSize, color: "#94a3b8", fontWeight: "600", marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.3 }}>
                 Duration
               </Text>
               <Text style={{ fontSize: smSize, fontWeight: "700", color: "#0f1419" }}>
@@ -166,7 +163,7 @@ export function TripHeader({
               </Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: xsSize, color: "#94a3b8", fontWeight: "600", marginBottom: 2, textTransform: "uppercase" }}>
+              <Text style={{ fontSize: xsSize, color: "#94a3b8", fontWeight: "600", marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.3 }}>
                 Progress
               </Text>
               <Text style={{ fontSize: smSize, fontWeight: "700", color: statusColor }}>
@@ -175,7 +172,7 @@ export function TripHeader({
             </View>
           </View>
 
-          <View style={{ height: 1, backgroundColor: "#f0f4f8" }} />
+          <View style={{ height: 1, backgroundColor: statusColor + "20" }} />
 
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <View style={{ flex: 1 }}>
@@ -191,9 +188,9 @@ export function TripHeader({
             </View>
             <View style={{ marginLeft: 8 }}>
               {isExpanded ? (
-                <ChevronUp size={18} color="#cbd5e1" strokeWidth={2} />
+                <ChevronUp size={18} color={statusColor} strokeWidth={2} />
               ) : (
-                <ChevronDown size={18} color="#cbd5e1" strokeWidth={2} />
+                <ChevronDown size={18} color={statusColor} strokeWidth={2} />
               )}
             </View>
           </View>
@@ -203,12 +200,12 @@ export function TripHeader({
       {isExpanded && (
         <View
           style={{
-            backgroundColor: "#fafbfc",
             borderBottomLeftRadius: 12,
             borderBottomRightRadius: 12,
-            borderWidth: 1,
+            borderWidth: 1.5,
             borderTopWidth: 0,
-            borderColor: "#f0f4f8",
+            borderColor: statusColor + "80",
+            borderLeftWidth: 4,
             paddingHorizontal: 16,
             paddingTop: 8,
             paddingBottom: 12,
@@ -255,15 +252,15 @@ export function TripHeader({
               paddingVertical: 10,
               paddingHorizontal: 14,
               borderRadius: 8,
-              backgroundColor: "#f0f4f8",
+              backgroundColor: statusBgColor,
               borderWidth: 1,
-              borderColor: "#e2e8f0",
+              borderColor: statusColor + "30",
             }}
           >
-            <Text style={{ fontSize: smSize, fontWeight: "600", color: "#1a8ad4" }}>
-              View Trip Details fssfd
+            <Text style={{ fontSize: smSize, fontWeight: "600", color: statusColor }}>
+              View Trip Details
             </Text>
-            <ArrowRight size={16} color="#1a8ad4" strokeWidth={2.5} />
+            <ArrowRight size={16} color={statusColor} strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
       )}

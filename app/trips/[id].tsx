@@ -9,7 +9,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, CheckCircle2, XCircle, ChevronLeft, Trash2 } from "lucide-react-native";
+import { Play, CheckCircle2, XCircle, ChevronLeft, Trash2, Clock, Package } from "lucide-react-native";
 import { EditableField } from "@/components/ui/EditableField";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast, ToastBanner } from "@/components/ui/toast";
@@ -21,6 +21,7 @@ import {
 } from "@/hooks/use-responsive-size";
 import type { Database } from "@/lib/database.types";
 import type { Trip } from "@/lib/icepack/data";
+import { formatHours } from "@/lib/icepack/data";
 import {
   getTripWithShipmentsById,
   getShipmentsByTripId,
@@ -32,6 +33,27 @@ import {
 } from "@/lib/icepack/services";
 
 type ShipmentRow = Database["public"]["Tables"]["shipments"]["Row"];
+
+const STATUS_COLORS: Record<string, string> = {
+  active: "#14b8a6",
+  completed: "#22c55e",
+  cancelled: "#ef4444",
+  planned: "#06b6d4",
+};
+
+const STATUS_BG_COLORS: Record<string, string> = {
+  active: "#d1faf5",
+  completed: "#dcfce7",
+  cancelled: "#fee2e2",
+  planned: "#cffafe",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  completed: "Delivered",
+  cancelled: "Cancelled",
+  planned: "Planned",
+};
 
 function toShipmentView(s: ShipmentRow, trip: Trip): ShipmentView {
   return {
@@ -261,14 +283,15 @@ export default function TripDetailScreen() {
           paddingTop: insets.top + 16,
         }}
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <TouchableOpacity
             onPress={() => router.back()}
             activeOpacity={0.7}
             style={{
               flexDirection: "row",
               alignItems: "center",
-              marginBottom: 12,
+              gap: 4,
+              paddingVertical: 4,
             }}
           >
             <ChevronLeft size={labelSize + 4} color="rgba(255,255,255,0.7)" strokeWidth={2} />
@@ -276,67 +299,85 @@ export default function TripDetailScreen() {
               Back
             </Text>
           </TouchableOpacity>
-          {!isTracker && (
-            <View style={{ flexDirection: "row", gap: 16 }}>
-              <TouchableOpacity
-                onPress={promptDelete}
-                activeOpacity={0.7}
-                style={{ padding: 4 }}
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            {(trip.status === "active" || trip.status === "planned") && (
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 6,
+                  backgroundColor: STATUS_COLORS[trip.status] + "25",
+                }}
               >
+                <Text style={{ fontSize: labelSize * 0.8, fontWeight: "700", color: "white", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {STATUS_LABELS[trip.status] ?? trip.status}
+                </Text>
+              </View>
+            )}
+            {!isTracker && (
+              <TouchableOpacity onPress={promptDelete} activeOpacity={0.7} style={{ padding: 4 }}>
                 <Trash2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
               </TouchableOpacity>
-            </View>
+            )}
+          </View>
+        </View>
+
+        <View style={{ marginTop: 20 }}>
+          {isTracker ? (
+            <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}>
+              {trip.name}
+            </Text>
+          ) : (
+            <EditableField
+              value={trip.name}
+              onSave={handleSaveName}
+              fontSize={titleSize}
+            />
           )}
         </View>
-        {isTracker ? (
-          <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}>
-            {trip.name}
-          </Text>
-        ) : (
-          <EditableField
-            value={trip.name}
-            onSave={handleSaveName}
-            fontSize={titleSize}
-          />
-        )}
-        {allShipments.length > 1 && (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              marginTop: 6,
-            }}
-          >
-            <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 3,
-                borderRadius: 12,
-              }}
-            >
+
+        <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Package size={12} color="rgba(255,255,255,0.5)" />
+              <Text style={{ fontSize: labelSize * 0.75, color: "rgba(255,255,255,0.5)", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                Items
+              </Text>
             </View>
-            <Text
-              style={{
-                fontSize: labelSize,
-                color: "rgba(255,255,255,0.6)",
-              }}
-            >
-              {allShipments.length} shipments
+            <Text style={{ fontSize: labelSize * 1.2, fontWeight: "700", color: "white" }}>
+              {allShipments.length}
             </Text>
           </View>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Clock size={12} color="rgba(255,255,255,0.5)" />
+              <Text style={{ fontSize: labelSize * 0.75, color: "rgba(255,255,255,0.5)", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                Duration
+              </Text>
+            </View>
+            <Text style={{ fontSize: labelSize * 1.2, fontWeight: "700", color: "white" }}>
+              {formatHours(trip.durationHours)}
+            </Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Clock size={12} color="rgba(255,255,255,0.5)" />
+              <Text style={{ fontSize: labelSize * 0.75, color: "rgba(255,255,255,0.5)", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                Status
+              </Text>
+            </View>
+            <Text style={{ fontSize: labelSize * 1.2, fontWeight: "700", color: STATUS_COLORS[trip.status] ?? "white" }}>
+              {STATUS_LABELS[trip.status] ?? trip.status}
+            </Text>
+          </View>
+        </View>
+
+        {trip.startedAt && (
+          <Text style={{ fontSize: labelSize * 0.85, color: "rgba(255,255,255,0.45)", marginTop: 12 }}>
+            Departed: {new Date(trip.startedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {new Date(trip.startedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+          </Text>
         )}
-        <Text
-          style={{
-            fontSize: labelSize,
-            color: "rgba(255,255,255,0.6)",
-            marginTop: 4,
-            textTransform: "uppercase",
-            letterSpacing: 1.2,
-          }}
-        >
-          Status: {trip.status}
-        </Text>
       </LinearGradient>
 
       <View style={{ paddingHorizontal: padding, paddingTop: padding, gap: 12 }}>

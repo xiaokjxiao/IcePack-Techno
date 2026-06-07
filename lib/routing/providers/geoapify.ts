@@ -61,7 +61,7 @@ async function fetchTravelTime(req: RoutingRequest): Promise<number> {
 export const geoapifyProvider: RoutingProvider = {
   id: "geoapify",
   label: "Geoapify",
-  defaultMode: "truck",
+  defaultMode: "light_truck",
   modes: MODES,
   getTravelTimeHours: fetchTravelTime,
 };

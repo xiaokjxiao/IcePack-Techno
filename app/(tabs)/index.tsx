@@ -353,7 +353,7 @@ export default function HomeScreen() {
                     color: "#0b2540",
                   }}
                 >
-                  Active Trips
+                  Active Shipments
                 </Text>
                 {recentActive.length > 0 && (
                   <View

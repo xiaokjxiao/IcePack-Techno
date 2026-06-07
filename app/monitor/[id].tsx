@@ -74,28 +74,14 @@ function RiskBadgeInline({ level }: { level: RiskLevel }) {
   );
 }
 
-function KpiCard({
-  label,
-  value,
-  hint,
-  accent,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  accent?: "safe" | "warning" | "critical";
-}) {
+function SectionHeader({ label }: { label: string }) {
   const labelSize = useResponsiveFontSize("xs");
-  const valueSize = useResponsiveFontSize("lg");
-  const accentColor =
-    accent === "critical" ? "#ef4444" : accent === "warning" ? "#f59e0b" : accent === "safe" ? "#14b8a6" : "#0b2540";
   return (
-    <View style={{ flex: 1, backgroundColor: "white", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#e8eef3" }}>
-      <Text style={{ fontSize: labelSize, fontWeight: "600", color: "#587a94", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4, marginTop: 8 }}>
+      <View style={{ width: 3, height: 14, backgroundColor: "#1a8ad4", borderRadius: 2 }} />
+      <Text style={{ fontSize: labelSize, fontWeight: "700", color: "#587a94", textTransform: "uppercase", letterSpacing: 0.8 }}>
         {label}
       </Text>
-      <Text style={{ fontSize: valueSize, fontWeight: "700", color: accentColor }}>{value}</Text>
-      {hint && <Text style={{ fontSize: labelSize * 0.85, color: "#9bb4c7", marginTop: 2 }}>{hint}</Text>}
     </View>
   );
 }
@@ -130,30 +116,59 @@ function IceProgress({
   );
 }
 
-function FreshnessGauge({ pct, risk }: { pct: number; risk: RiskLevel }) {
+function RouteProgress({ trip, live, shipment }: { trip: Trip; live: ReturnType<typeof liveStateFor>; shipment: ShipmentRow }) {
   const labelSize = useResponsiveFontSize("sm");
-  const gaugeColor = risk === "critical" ? "#ef4444" : risk === "warning" ? "#f59e0b" : "#14b8a6";
-  const riskLabel = risk === "critical" ? "High Risk" : risk === "warning" ? "Moderate" : "Good";
-  const size = 100;
-  const strokeWidth = 10;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const dash = (Math.min(100, Math.max(0, pct)) / 100) * circumference;
+  const progressPct = Math.min(100, Math.round((live.elapsedHours / trip.durationHours) * 100));
+  const remainingHours = Math.max(0, trip.durationHours - live.elapsedHours);
+  const eta = new Date(Date.now() + remainingHours * 36e5);
+  const etaTime = eta.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  const progressColor = progressPct > 90 ? "#14b8a6" : progressPct > 50 ? "#1a8ad4" : "#06b6d4";
+
   return (
-    <View style={{ backgroundColor: "white", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e8eef3", shadowColor: "#0b2540", shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2, flexDirection: "row", alignItems: "center", gap: 16 }}>
-      <View style={{ width: size, height: size }}>
-        <Svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
-          <Circle cx={size / 2} cy={size / 2} r={radius} stroke="#e8eef3" strokeWidth={strokeWidth} fill="none" />
-          <Circle cx={size / 2} cy={size / 2} r={radius} stroke={gaugeColor} strokeWidth={strokeWidth} fill="none" strokeLinecap="round" strokeDasharray={`${dash} ${circumference}`} rotation="-90" origin={`${size / 2}, ${size / 2}`} />
-        </Svg>
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: labelSize, fontWeight: "700", color: "#0b2540" }}>{pct}%</Text>
-        </View>
+    <View style={{ backgroundColor: "white", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e8eef3", shadowColor: "#0b2540", shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 }}>
+      <Text style={{ fontSize: labelSize * 0.8, fontWeight: "600", color: "#587a94", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>Route Progress</Text>
+
+      <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 4 }}>
+        <Text style={{ fontSize: labelSize * 0.7, fontWeight: "600", color: "#0b2540", maxWidth: "40%" }} numberOfLines={1}>
+          {shipment.origin_location || "Origin"}
+        </Text>
+        <Text style={{ fontSize: labelSize * 0.7, fontWeight: "600", color: "#0b2540", maxWidth: "40%", textAlign: "right" }} numberOfLines={1}>
+          {shipment.destination_location || "Destination"}
+        </Text>
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: labelSize * 0.8, fontWeight: "600", color: "#587a94", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Freshness Score</Text>
-        <Text style={{ fontSize: labelSize * 1.6, fontWeight: "700", color: "#0b2540" }}>{pct}<Text style={{ fontSize: labelSize }}>%</Text></Text>
-        <Text style={{ fontSize: labelSize * 0.8, fontWeight: "600", color: gaugeColor, textTransform: "uppercase", marginTop: 4 }}>{riskLabel}</Text>
+
+      <View style={{ height: 8, backgroundColor: "#e8eef3", borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
+        <View style={{ height: "100%", width: `${Math.max(5, progressPct)}%`, backgroundColor: progressColor, borderRadius: 999 }} />
+      </View>
+
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 8 }}>
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: progressColor }} />
+        <Text style={{ fontSize: labelSize * 0.85, fontWeight: "700", color: progressColor }}>
+          {progressPct}% complete
+        </Text>
+      </View>
+
+      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ fontSize: labelSize * 0.7, color: "#9bb4c7", marginBottom: 2 }}>Elapsed</Text>
+          <Text style={{ fontSize: labelSize * 0.85, fontWeight: "700", color: "#0b2540" }}>
+            {formatHours(live.elapsedHours)}
+          </Text>
+        </View>
+        <View style={{ width: 1, backgroundColor: "#e8eef3" }} />
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ fontSize: labelSize * 0.7, color: "#9bb4c7", marginBottom: 2 }}>Remaining</Text>
+          <Text style={{ fontSize: labelSize * 0.85, fontWeight: "700", color: "#0b2540" }}>
+            {formatHours(remainingHours)}
+          </Text>
+        </View>
+        <View style={{ width: 1, backgroundColor: "#e8eef3" }} />
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ fontSize: labelSize * 0.7, color: "#9bb4c7", marginBottom: 2 }}>ETA</Text>
+          <Text style={{ fontSize: labelSize * 0.85, fontWeight: "700", color: progressColor }}>
+            {etaTime}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -221,6 +236,135 @@ function IceChart({ trip, live }: { trip: Trip; live: ReturnType<typeof liveStat
         {actualPts ? <Polyline points={actualPts} fill="none" stroke="#14b8a6" strokeWidth={2} strokeLinejoin="round" /> : null}
         {forecastPts ? <Polyline points={forecastPts} fill="none" stroke="#14b8a6" strokeWidth={2} strokeDasharray="4,4" strokeLinejoin="round" opacity={0.6} /> : null}
       </Svg>
+    </View>
+  );
+}
+
+function SafeHoursForecast({ trip, live }: { trip: Trip; live: ReturnType<typeof liveStateFor> }) {
+  const labelSize = useResponsiveFontSize("sm");
+  const remaining = Math.max(0, trip.safeDurationHours - live.elapsedHours);
+  const criticalAt = trip.safeDurationHours * 0.9;
+  const warningAt = trip.safeDurationHours * 0.65;
+  const timeUntilCritical = Math.max(0, criticalAt - live.elapsedHours);
+  const timeUntilWarning = Math.max(0, warningAt - live.elapsedHours);
+  const pctElapsed = Math.min(100, Math.round((live.elapsedHours / trip.safeDurationHours) * 100));
+
+  const accent = timeUntilCritical <= 0 ? "#ef4444" : timeUntilWarning <= 0 ? "#f59e0b" : "#14b8a6";
+  const statusLabel = timeUntilCritical <= 0 ? "Critical" : timeUntilWarning <= 0 ? "Low" : "Good";
+
+  return (
+    <View style={{ backgroundColor: "white", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e8eef3", shadowColor: "#0b2540", shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <Text style={{ fontSize: labelSize * 0.8, fontWeight: "600", color: "#587a94", textTransform: "uppercase", letterSpacing: 0.5 }}>Safe Hours Forecast</Text>
+        <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: accent + "20" }}>
+          <Text style={{ fontSize: labelSize * 0.7, fontWeight: "700", color: accent }}>{statusLabel}</Text>
+        </View>
+      </View>
+      <Text style={{ fontSize: labelSize * 1.8, fontWeight: "700", color: accent, marginBottom: 4 }}>
+        {formatHours(remaining)} remaining
+      </Text>
+      <View style={{ height: 8, backgroundColor: "#e8eef3", borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
+        <View style={{ height: "100%", width: `${100 - pctElapsed}%`, backgroundColor: accent, borderRadius: 999 }} />
+      </View>
+      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <Text style={{ fontSize: labelSize * 0.7, color: timeUntilCritical > 0 ? "#9bb4c7" : "#ef4444" }}>
+          {timeUntilCritical > 0 ? `Critical in ${formatHours(timeUntilCritical)}` : "Critical now"}
+        </Text>
+        <Text style={{ fontSize: labelSize * 0.7, color: "#9bb4c7" }}>
+          {pctElapsed}% elapsed
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function SpoilageProbability({ trip, live }: { trip: Trip; live: ReturnType<typeof liveStateFor> }) {
+  const labelSize = useResponsiveFontSize("sm");
+  const spoilagePct = Math.min(100, Math.round((live.elapsedHours / trip.safeDurationHours) * 100));
+  const severity: RiskLevel = spoilagePct > 90 ? "critical" : spoilagePct > 60 ? "warning" : "safe";
+  const severityColor = severity === "critical" ? "#ef4444" : severity === "warning" ? "#f59e0b" : "#14b8a6";
+  const severityLabel = severity === "critical" ? "High" : severity === "warning" ? "Moderate" : "Low";
+
+  const size = 100;
+  const strokeWidth = 8;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dash = (spoilagePct / 100) * circumference;
+
+  return (
+    <View style={{ backgroundColor: "white", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e8eef3", shadowColor: "#0b2540", shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2, flexDirection: "row", alignItems: "center", gap: 16 }}>
+      <View style={{ width: size, height: size }}>
+        <Svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
+          <Circle cx={size / 2} cy={size / 2} r={radius} stroke="#e8eef3" strokeWidth={strokeWidth} fill="none" />
+          <Circle cx={size / 2} cy={size / 2} r={radius} stroke={severityColor} strokeWidth={strokeWidth} fill="none" strokeLinecap="round" strokeDasharray={`${dash} ${circumference}`} rotation="-90" origin={`${size / 2}, ${size / 2}`} />
+        </Svg>
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: labelSize, fontWeight: "700", color: severityColor }}>{spoilagePct}%</Text>
+        </View>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: labelSize * 0.8, fontWeight: "600", color: "#587a94", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Spoilage Probability</Text>
+        <Text style={{ fontSize: labelSize * 1.3, fontWeight: "700", color: severityColor, marginBottom: 2 }}>
+          {severityLabel} Risk
+        </Text>
+        <Text style={{ fontSize: labelSize * 0.75, color: "#9bb4c7" }}>
+          Elapsed {formatHours(live.elapsedHours)} / safe {formatHours(trip.safeDurationHours)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function ThresholdAlerts({ trip, live, profile }: { trip: Trip; live: ReturnType<typeof liveStateFor>; profile: { tempMinC: number; tempMaxC: number } }) {
+  const labelSize = useResponsiveFontSize("sm");
+  const alerts: { icon: string; label: string; detail: string; severity: RiskLevel }[] = [];
+
+  if (live.pctRemaining < 20) {
+    alerts.push({ icon: "🧊", label: "Ice Reserve Critical", detail: `Only ${live.pctRemaining}% ice remaining (${live.iceRemainingKg}kg)`, severity: "critical" });
+  } else if (live.pctRemaining < 35) {
+    alerts.push({ icon: "🧊", label: "Ice Reserve Low", detail: `${live.pctRemaining}% ice remaining — consider topping up`, severity: "warning" });
+  }
+
+  if (live.freshness < 50) {
+    alerts.push({ icon: "🥬", label: "Cargo Freshness Declining", detail: `Freshness score at ${live.freshness}% — quality may degrade`, severity: live.freshness < 30 ? "critical" : "warning" });
+  }
+
+  if (live.elapsedHours > trip.safeDurationHours * 0.9) {
+    alerts.push({ icon: "⏱", label: "Past Safe Duration", detail: "Shipment has exceeded 90% of safe duration window", severity: "critical" });
+  } else if (live.elapsedHours > trip.safeDurationHours * 0.65) {
+    alerts.push({ icon: "⏱", label: "Approaching Safe Limit", detail: `Safe duration at ${Math.round((live.elapsedHours / trip.safeDurationHours) * 100)}%`, severity: "warning" });
+  }
+
+  if (alerts.length === 0) {
+    return (
+      <View style={{ backgroundColor: "white", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e8eef3", shadowColor: "#0b2540", shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 }}>
+        <Text style={{ fontSize: labelSize * 0.8, fontWeight: "600", color: "#587a94", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Threshold Alerts</Text>
+        <View style={{ alignItems: "center", paddingVertical: 12 }}>
+          <Text style={{ fontSize: labelSize * 0.85, color: "#14b8a6", fontWeight: "600" }}>All clear — no alerts</Text>
+          <Text style={{ fontSize: labelSize * 0.7, color: "#9bb4c7", marginTop: 2 }}>Ice, freshness, and duration within safe thresholds</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ backgroundColor: "white", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e8eef3", shadowColor: "#0b2540", shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 }}>
+      <Text style={{ fontSize: labelSize * 0.8, fontWeight: "600", color: "#587a94", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Threshold Alerts</Text>
+      {alerts.map((a, i) => {
+        const severityColor = a.severity === "critical" ? "#ef4444" : "#f59e0b";
+        return (
+          <View key={i} style={{ marginTop: i > 0 ? 8 : 0 }}>
+            {i > 0 && <View style={{ height: 1, backgroundColor: "#e8eef3", marginBottom: 8 }} />}
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+              <Text style={{ fontSize: 16 }}>{a.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: labelSize * 0.85, fontWeight: "700", color: severityColor, marginBottom: 2 }}>{a.label}</Text>
+                <Text style={{ fontSize: labelSize * 0.7, color: "#587a94" }}>{a.detail}</Text>
+              </View>
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -339,29 +483,26 @@ export default function MonitorScreen() {
         )}
       </LinearGradient>
 
-      <View style={{ paddingHorizontal: padding, paddingTop: padding, gap: 14 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: "#e8eef3" }}>
-          <View>
-            <Text style={{ fontSize: labelSize * 0.7, fontWeight: "600", color: "#587a94", textTransform: "uppercase", letterSpacing: 0.5 }}>Temperature Range</Text>
-            <Text style={{ fontSize: labelSize, fontWeight: "600", color: "#0b2540" }}>{profile.range}</Text>
-          </View>
-          <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(6, 182, 212, 0.1)" }}>
-            <Text style={{ fontSize: labelSize * 0.7, fontWeight: "700", color: "#06b6d4", textTransform: "uppercase" }}>{profile.label}</Text>
-          </View>
+      <View style={{ paddingHorizontal: padding, paddingTop: padding, gap: 6 }}>
+        <SectionHeader label="Ice & Preservation" />
+        <View style={{ gap: 14, marginBottom: 6 }}>
+          <IceProgress iceRemainingKg={live.iceRemainingKg} recommendedIceKg={trip.recommendedIceKg} pctRemaining={live.pctRemaining} risk={live.risk} />
+          <IceChart trip={trip} live={live} />
         </View>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-          <KpiCard label="Ice Left" value={`${live.iceRemainingKg}kg`} hint={`/ ${trip.recommendedIceKg}kg`} />
-          <KpiCard label="Elapsed" value={formatHours(live.elapsedHours)} hint={`of ${trip.durationHours}h`} />
-        </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-          <KpiCard label="Initial Ice" value={`${trip.recommendedIceKg}kg`} />
-          <KpiCard label="Risk" value={live.risk.toUpperCase()} accent={live.risk} />
+        <SectionHeader label="Route & Timeline" />
+        <View style={{ gap: 14, marginBottom: 6 }}>
+          <RouteProgress trip={trip} live={live} shipment={shipment} />
+          <SafeHoursForecast trip={trip} live={live} />
         </View>
 
-        <IceProgress iceRemainingKg={live.iceRemainingKg} recommendedIceKg={trip.recommendedIceKg} pctRemaining={live.pctRemaining} risk={live.risk} />
-        <FreshnessGauge pct={live.freshness} risk={live.risk} />
-        <IceChart trip={trip} live={live} />
+        <SectionHeader label="Risk Analysis" />
+        <View style={{ gap: 14, marginBottom: 6 }}>
+          <SpoilageProbability trip={trip} live={live} />
+          <ThresholdAlerts trip={trip} live={live} profile={profile} />
+        </View>
+
+        <SectionHeader label="Recommendation" />
         <Recommendation risk={live.risk} trip={trip} live={live} />
 
         {trip.id && tripRow && (

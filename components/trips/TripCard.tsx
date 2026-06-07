@@ -12,6 +12,13 @@ import { Text, TouchableOpacity, View } from "react-native";
 
 type RiskLevel = "safe" | "warning" | "critical";
 
+const STATUS_COLORS: Record<string, string> = {
+  active: "#14b8a6",
+  completed: "#22c55e",
+  cancelled: "#ef4444",
+  planned: "#06b6d4",
+};
+
 const STATUS_BG_COLORS: Record<string, string> = {
   active: "#d1faf5",
   completed: "#dcfce7",
@@ -161,10 +168,11 @@ export function TripCard({
 
   const count = shipmentCount ?? 1;
   const startedText = formatDateTime(trip.startedAt);
+  const statusColor = STATUS_COLORS[trip.status] ?? "#94a3b8";
 
   const borderStyle = selected
-    ? { borderWidth: 2, borderColor: "#1a8ad4" }
-    : { borderWidth: 1, borderColor: "#f0f4f8" };
+    ? { borderWidth: 2, borderColor: "#1a8ad4", borderLeftWidth: 4, borderLeftColor: "#1a8ad4" }
+    : { borderWidth: 1.5, borderColor: statusColor + "80", borderLeftWidth: 4, borderLeftColor: statusColor + "80" };
 
   const headerRow = (
     <View style={{ marginBottom: 2 }}>
@@ -185,6 +193,14 @@ export function TripCard({
           </View>
           
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: statusColor,
+              }}
+            />
             <Text style={{ fontSize: fsXs, color: "#64748b" }}>
               {product.label}
             </Text>
@@ -227,10 +243,10 @@ export function TripCard({
   );
 
   const cellsRow = (
-    <View style={{ flexDirection: "row", gap: 10, borderTopWidth: 1, borderTopColor: "#f0f4f8", paddingTop: 6 }}>
+    <View style={{ flexDirection: "row", gap: 10, borderTopWidth: 1, borderTopColor: statusColor + "20", paddingTop: 6 }}>
       <Cell
         label="Duration"
-        value={isActive ? formatHours(live.elapsedHours) : `${trip.durationHours}h`}
+        value={isActive ? formatHours(live.elapsedHours) : formatHours(trip.durationHours)}
       />
       <Cell
         label="Status"
