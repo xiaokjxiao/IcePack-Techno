@@ -150,7 +150,7 @@ export default function HomeScreen() {
     if (todayDepartureNames.length > 0) {
       notifyDepartureReminders(todayDepartureNames);
     }
-  }, [criticalShipments.length > 0 ? criticalShipments.length : 0, todayDepartureNames.length > 0 ? todayDepartureNames.length : 0]);
+  }, [criticalNames, criticalShipments.length, todayDepartureNames]);
 
   const statCards: { label: string; value: string; accent?: boolean }[] = [
     { label: "Active", value: String(tripCounts.active).padStart(2, "0") },
