@@ -32,6 +32,7 @@ function toTrip(s: ShipmentView): Trip {
     iceRemainingKg: s.iceRemainingKg ?? 0,
     meltRateKgPerHr: s.meltRateKgPerHr ?? 0,
     safeDurationHours: s.safeDurationHours ?? 0,
+    iceType: (s.iceType as any) ?? null,
     status: s.tripStatus ?? "planned",
     startedAt: s.startedAt ?? null,
     completedAt: null,

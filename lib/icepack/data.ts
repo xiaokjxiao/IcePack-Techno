@@ -218,6 +218,7 @@ export interface Trip {
   iceRemainingKg: number;
   meltRateKgPerHr: number;
   safeDurationHours: number;
+  iceType: IceTypeKey | null;
   status: TripStatus;
   startedAt: string | null;
   completedAt: string | null;
@@ -256,8 +257,7 @@ export function calculateIce(
     ? adjustMeltBaseForTemp(profile.perContainerMeltBase, ambientTempC, targetTempC ?? profile.tempMaxC)
     : profile.perContainerMeltBase;
   const meltRateKgPerHr = containers * perContainerMelt;
-  const icePerContainer = recommendedIceKg / containers;
-  const safeDurationHours = icePerContainer / Math.max(perContainerMelt, 0.01);
+  const safeDurationHours = effectiveDurationHours;
   return {
     recommendedIceKg: round(recommendedIceKg),
     meltRateKgPerHr: round(meltRateKgPerHr),
@@ -511,9 +511,7 @@ export function calculateIceForType(
 
   const meltRateKgPerHr = round(validatedPallets * effectivePerContainerMelt);
 
-  const safeDurationHours = effectivePerContainerMelt > 0
-    ? round(icePerPalletKg / effectivePerContainerMelt)
-    : 0;
+  const safeDurationHours = round(effectiveDurationHours * iceType.longevityMultiplier);
 
   return {
     amountKg,

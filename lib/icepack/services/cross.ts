@@ -26,6 +26,7 @@ function mapTripWithShipment(row: TripWithShipments, shipment: ShipmentRow): Tri
     iceRemainingKg: shipment.ice_remaining_kg ?? 0,
     meltRateKgPerHr: shipment.melt_rate_kg_per_hr ?? 0,
     safeDurationHours: shipment.safe_duration_hours ?? 0,
+    iceType: (shipment.ice_type as any) ?? null,
     status: row.status,
     startedAt: row.started_at,
     completedAt: row.completed_at,
@@ -37,9 +38,13 @@ function mapTripWithShipment(row: TripWithShipments, shipment: ShipmentRow): Tri
 // ---------- Status transitions (shipment + trip coordination) ----------
 
 export async function updateShipmentStatus(id: number, status: TripStatus) {
+  const updatePayload: Record<string, unknown> = { status };
+  if (status === "active") {
+    updatePayload.schedule = null;
+  }
   const { data: shipment } = await supabase
     .from("shipments")
-    .update({ status })
+    .update(updatePayload)
     .eq("id", id)
     .select("trip_id")
     .single();
@@ -121,7 +126,7 @@ export async function startTrip(id: number) {
 
   const { error: tripError } = await supabase.from("trips").update({ status: "active", started_at: now, updated_at: now }).eq("id", id);
   if (tripError) throw tripError;
-  const { error: shipError } = await supabase.from("shipments").update({ status: "active" }).eq("trip_id", id);
+  const { error: shipError } = await supabase.from("shipments").update({ status: "active", schedule: null }).eq("trip_id", id);
   if (shipError) throw shipError;
 }
 
@@ -133,6 +138,7 @@ export async function startSoloShipment(shipmentId: number, shipmentName: string
     started_at: now,
   });
   await updateShipmentTrip(shipmentId, trip.id, false, "active");
+  await supabase.from("shipments").update({ schedule: null }).eq("id", shipmentId);
   return trip;
 }
 
@@ -207,6 +213,7 @@ export async function getTripsWithAllShipments(): Promise<TripWithShipmentViews[
         iceRemainingKg: s.ice_remaining_kg ?? null,
         meltRateKgPerHr: s.melt_rate_kg_per_hr ?? null,
         safeDurationHours: s.safe_duration_hours ?? null,
+        iceType: s.ice_type ?? null,
         startedAt: t.started_at,
         schedule: s.schedule ?? null,
       }));
@@ -275,6 +282,7 @@ export async function getShipmentsWithTrips() {
     iceRemainingKg: s.ice_remaining_kg ?? null,
     meltRateKgPerHr: s.melt_rate_kg_per_hr ?? null,
     safeDurationHours: s.safe_duration_hours ?? null,
+    iceType: s.ice_type ?? null,
     startedAt: s.trip?.started_at ?? null,
     schedule: s.schedule ?? null,
   }));
@@ -295,6 +303,9 @@ export async function createGroupedTrip(
 
   for (const trip of selectedTrips) {
     await updateShipmentTrip(trip.shipmentId, newTrip.id, !startNow, startNow ? "active" : "planned");
+    if (startNow) {
+      await supabase.from("shipments").update({ schedule: null }).eq("id", trip.shipmentId);
+    }
   }
 
   return newTrip;
@@ -322,6 +333,7 @@ export async function createGroupedTripFromShipments(
         trip_id: newTrip.id,
         is_planned: !startNow,
         status: startNow ? "active" : "planned",
+        schedule: startNow ? null : undefined,
         recommended_ice_kg: calc.recommendedIceKg,
         ice_remaining_kg: calc.recommendedIceKg,
         melt_rate_kg_per_hr: calc.meltRateKgPerHr,

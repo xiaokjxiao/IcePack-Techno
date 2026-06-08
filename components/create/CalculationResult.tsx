@@ -16,6 +16,9 @@ interface CalculationResultProps {
 }
 
 export function CalculationResult({
+  recommendedIceKg,
+  meltRateKgPerHr,
+  safeDurationHours,
   iceDistribution,
   selectedIceTypeKey,
   onSelectIceType,
@@ -26,6 +29,18 @@ export function CalculationResult({
   const { isTablet } = useScreenDimensions();
   const canSelect = !!onSelectIceType;
   const hasWeather = ambientTempC != null;
+  const selectedLabel = selectedIceTypeKey
+    ? iceDistribution.find((d) => d.iceType.key === selectedIceTypeKey)?.iceType.label ?? ""
+    : "";
+
+  const fmtDuration = (hours: number): string => {
+    if (hours <= 0) return "—";
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  };
 
   return (
     <View
@@ -82,8 +97,38 @@ export function CalculationResult({
             {ambientHumidityPct != null ? ` · ${ambientHumidityPct}% humidity` : ""}
           </Text>
           <View style={{ flex: 1 }} />
-          <Text style={{ fontSize: 10, color: "#0284c7" }}>
-            melt adjusted
+        </View>
+      )}
+
+      {selectedIceTypeKey && recommendedIceKg > 0 && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: "#f0fdf4",
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: "#bbf7d0",
+          }}
+        >
+          <CheckCircle2 size={16} color="#16a34a" strokeWidth={2} />
+          <Text style={{ fontSize: isTablet ? 13 : 12, color: "#166534", fontWeight: "600" }}>
+            {selectedLabel}
+          </Text>
+          <View style={{ width: 1, height: 12, backgroundColor: "#bbf7d0" }} />
+          <Text style={{ fontSize: isTablet ? 13 : 12, color: "#166534", fontWeight: "700" }}>
+            {recommendedIceKg} kg
+          </Text>
+          <View style={{ width: 1, height: 12, backgroundColor: "#bbf7d0" }} />
+          <Text style={{ fontSize: isTablet ? 12 : 11, color: "#15803d" }}>
+            {meltRateKgPerHr} kg/hr
+          </Text>
+          <View style={{ width: 1, height: 12, backgroundColor: "#bbf7d0" }} />
+          <Text style={{ fontSize: isTablet ? 12 : 11, color: "#15803d", fontWeight: "500" }}>
+            {fmtDuration(safeDurationHours)} safe
           </Text>
         </View>
       )}
@@ -135,7 +180,7 @@ export function CalculationResult({
                 </View>
 
                 <Text style={{ fontSize: isTablet ? 13 : 12, color: "#587a94" }}>
-                  {d.iceType.characteristics}
+                  {d.iceType.commonlyUsedFor}
                 </Text>
 
                 <View style={{ flexDirection: "row", gap: 20 }}>
@@ -148,9 +193,13 @@ export function CalculationResult({
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                     <Clock size={13} color="#9bb4c7" strokeWidth={1.5} />
                     <Text style={{ fontSize: isTablet ? 12 : 11, color: "#587a94", fontWeight: "500" }}>
-                      {d.safeDurationHours} hrs safe
+                      {fmtDuration(d.safeDurationHours)} safe
                     </Text>
                   </View>
+                  <View style={{ flex: 1 }} />
+                  <Text style={{ fontSize: isTablet ? 10 : 9, color: "#9bb4c7" }}>
+                    {d.iceType.meltRateRange}
+                  </Text>
                 </View>
               </TouchableOpacity>
             );

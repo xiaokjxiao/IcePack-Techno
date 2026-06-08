@@ -10,10 +10,8 @@ import { ContainerRecommendationCard } from "@/components/create/ContainerRecomm
 import { CreateButtons } from "@/components/create/CreateButtons";
 import {
   PRODUCT_CATEGORIES,
-  ICE_TYPES,
   calculateIce,
   calculateIceDistribution,
-  calculateIceForType,
   getProfileFor,
   type IceTypeKey,
 } from "@/lib/icepack/data";
@@ -156,21 +154,20 @@ export function CreateForm() {
     [totalCargoKg, durationHours, profile, routeWeather?.avgTempC, targetTempC, containerCount, stopoverHours],
   );
 
-  const finalIceCalc = useMemo(() => {
-    if (selectedIceTypeKey) {
-      const iceType = ICE_TYPES[selectedIceTypeKey];
-      const { amountKg, meltRateKgPerHr, safeDurationHours } = calculateIceForType(
-        totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, iceType, profile, undefined, routeWeather?.avgTempC, targetTempC, Number(stopoverHours) || 0,
-      );
-      return { recommendedIceKg: amountKg, meltRateKgPerHr, safeDurationHours };
-    }
-    return calc;
-  }, [selectedIceTypeKey, totalCargoKg, durationHours, containerCount, profile, calc, routeWeather?.avgTempC, targetTempC, stopoverHours]);
-
   const iceDistribution = useMemo(
     () => calculateIceDistribution(totalCargoKg, Number(durationHours) || 0, Number(containerCount) || 0, productId, profile, undefined, routeWeather?.avgTempC, targetTempC, Number(stopoverHours) || 0),
     [totalCargoKg, durationHours, containerCount, productId, profile, routeWeather?.avgTempC, targetTempC, stopoverHours],
   );
+
+  const finalIceCalc = useMemo(() => {
+    if (selectedIceTypeKey) {
+      const match = iceDistribution.find(d => d.iceType.key === selectedIceTypeKey);
+      if (match) {
+        return { recommendedIceKg: match.amountKg, meltRateKgPerHr: match.meltRateKgPerHr, safeDurationHours: match.safeDurationHours };
+      }
+    }
+    return calc;
+  }, [selectedIceTypeKey, iceDistribution, calc]);
 
   const canSubmit = totalCargoKg > 0 && Number(durationHours) > 0;
   const [isCreating, setIsCreating] = useState(false);
@@ -259,7 +256,7 @@ export function CreateForm() {
         ice_type: selectedIceTypeKey || null,
         hs_code: hsCode || null,
         supplier_name: supplierName || null,
-        schedule: scheduleDate?.toISOString() || null,
+        schedule: startNow ? null : (scheduleDate?.toISOString() || null),
         units_pallets: containerCount ? Math.round(Number(containerCount)) : null,
       };
       if (tripId !== null) {
@@ -876,9 +873,9 @@ export function CreateForm() {
           )}
 
           <CalculationResult
-            recommendedIceKg={calc.recommendedIceKg}
-            meltRateKgPerHr={calc.meltRateKgPerHr}
-            safeDurationHours={calc.safeDurationHours}
+            recommendedIceKg={finalIceCalc.recommendedIceKg}
+            meltRateKgPerHr={finalIceCalc.meltRateKgPerHr}
+            safeDurationHours={finalIceCalc.safeDurationHours}
             iceDistribution={iceDistribution}
             selectedIceTypeKey={selectedIceTypeKey}
             onSelectIceType={setSelectedIceTypeKey}

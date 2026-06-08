@@ -29,6 +29,7 @@ import {
   formatHours,
   getProduct,
   getProfileFor,
+  ICE_TYPES,
   liveStateFor,
 } from "@/lib/icepack/data";
 import { getShipment, getTrip } from "@/lib/icepack/services";
@@ -49,6 +50,7 @@ function buildTrip(shipment: ShipmentRow, tripRow: TripRow | null): Trip {
     iceRemainingKg: shipment.ice_remaining_kg ?? 0,
     meltRateKgPerHr: shipment.melt_rate_kg_per_hr ?? 0,
     safeDurationHours: shipment.safe_duration_hours ?? 0,
+    iceType: (shipment.ice_type as any) ?? null,
     status: tripRow?.status ?? "planned",
     startedAt: tripRow?.started_at ?? null,
     completedAt: tripRow?.completed_at ?? null,
@@ -280,8 +282,12 @@ function SafeHoursForecast({ trip, live }: { trip: Trip; live: ReturnType<typeof
 
 function SpoilageProbability({ trip, live }: { trip: Trip; live: ReturnType<typeof liveStateFor> }) {
   const labelSize = useResponsiveFontSize("sm");
-  const spoilagePct = Math.min(100, Math.round((live.elapsedHours / trip.safeDurationHours) * 100));
-  const severity: RiskLevel = spoilagePct > 90 ? "critical" : spoilagePct > 60 ? "warning" : "safe";
+  const icePct = Math.max(0, live.pctRemaining / 100);
+  const iceSpoilage = (1 - icePct) * 40;
+  const hoursPastSafe = Math.max(0, live.elapsedHours - trip.safeDurationHours);
+  const timeSpoilage = Math.min(60, (hoursPastSafe / Math.max(trip.safeDurationHours, 1)) * 60);
+  const spoilagePct = Math.round(iceSpoilage + timeSpoilage);
+  const severity: RiskLevel = spoilagePct > 75 ? "critical" : spoilagePct > 40 ? "warning" : "safe";
   const severityColor = severity === "critical" ? "#ef4444" : severity === "warning" ? "#f59e0b" : "#14b8a6";
   const severityLabel = severity === "critical" ? "High" : severity === "warning" ? "Moderate" : "Low";
 
@@ -308,7 +314,7 @@ function SpoilageProbability({ trip, live }: { trip: Trip; live: ReturnType<type
           {severityLabel} Risk
         </Text>
         <Text style={{ fontSize: labelSize * 0.75, color: "#9bb4c7" }}>
-          Elapsed {formatHours(live.elapsedHours)} / safe {formatHours(trip.safeDurationHours)}
+          Ice {live.pctRemaining}% · elapsed {formatHours(live.elapsedHours)}
         </Text>
       </View>
     </View>
@@ -474,7 +480,7 @@ export default function MonitorScreen() {
         </TouchableOpacity>
         <Text style={{ fontSize: titleSize, fontWeight: "700", color: "white" }}>{shipment.shipment_name}</Text>
         <Text style={{ fontSize: labelSize, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>
-          {product.label} · {profile.label}
+          {product.label} · {profile.label}{trip.iceType ? ` · ${ICE_TYPES[trip.iceType].label} Ice` : ""}
         </Text>
         {!isActive && (
           <Text style={{ fontSize: labelSize * 0.8, color: "rgba(255,255,255,0.5)", marginTop: 6, textTransform: "uppercase" }}>

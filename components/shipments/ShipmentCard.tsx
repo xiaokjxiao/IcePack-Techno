@@ -24,6 +24,7 @@ export interface ShipmentView {
   iceRemainingKg: number | null;
   meltRateKgPerHr: number | null;
   safeDurationHours: number | null;
+  iceType: string | null;
   startedAt: string | null;
   schedule: string | null;
 }
@@ -201,6 +202,7 @@ export function ShipmentCard({
         iceRemainingKg: shipment.iceRemainingKg!,
         meltRateKgPerHr: shipment.meltRateKgPerHr!,
         safeDurationHours: shipment.safeDurationHours!,
+        iceType: (shipment.iceType as any) ?? null,
         status: shipment.shipmentStatus!,
         groupName: null,
         startedAt: shipment.startedAt ?? null,
